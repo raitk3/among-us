@@ -45,6 +45,12 @@ def send():
     "Rule 5: Don't ask where, let the person speak",
     "Rule 5: The one who reports or calls the meeting speaks first"
     ]))
+
+    sentences.append(random.choice([
+    "Rule 6: No sensitive people",
+    "Rule 6: Don't be sensitive"
+    ]))
+
     
     for i, sentence in enumerate(sentences):
         if i != 0:
