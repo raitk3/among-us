@@ -3,7 +3,7 @@ import keyboard
 import time
 import random
 
-CODE = "UVRNHF"
+CODE = "DIJTMF"
 CROSS = (330, 320)
 TEXTBOX = (680, 700)
 ARROW = (860, 700)
@@ -12,6 +12,7 @@ ARROW = (860, 700)
 def click():
 
     pyautogui.click(CROSS)
+    time.sleep(0.1)
     pyautogui.click(TEXTBOX)
     time.sleep(0.1)
     pyautogui.write(CODE)
