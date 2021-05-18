@@ -3,15 +3,20 @@ import keyboard
 import time
 import random
 
-CODE = "FGJLMF"
+CODE = "UVRNHF"
+CROSS = (330, 320)
+TEXTBOX = (680, 700)
+ARROW = (860, 700)
+
+
 def click():
-    pyautogui.moveTo(330, 320)
-    pyautogui.click(button='left')
-    pyautogui.moveTo(680, 700)
-    pyautogui.click(button='left')
+
+    pyautogui.click(CROSS)
+    pyautogui.click(TEXTBOX)
+    time.sleep(0.1)
     pyautogui.write(CODE)
-    pyautogui.moveTo(860, 700)
-    pyautogui.click(button='left')
+    pyautogui.click(ARROW)
+
 
 def wait_seconds(seconds):
     print(f"Waiting {seconds} seconds.")
@@ -21,6 +26,7 @@ def wait_seconds(seconds):
             break
         continue
     pass
+
 
 def cycle():
     running = True
@@ -40,8 +46,7 @@ def cycle():
             print("Ok, done!")
             break
 
+
 if __name__ == '__main__':
     wait_seconds(5)
     cycle()
-
-    
