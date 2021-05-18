@@ -89,8 +89,7 @@ def do_task(task_to_do):
 
 
 def align():
-    x_values = RANGE_OF_ALIGN_UP_DOWN_VALUES
-    for x in x_values:
+    for x in RANGE_OF_ALIGN_UP_DOWN_VALUES:
         y = int(ALIGN_PARABOLA_CONSTANT * x ** 2)
         actual_coords = (ALIGN_CENTER[0] + y, ALIGN_CENTER[1] + x)
         r, g, b = check_coords(actual_coords[0], actual_coords[1])
