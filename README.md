@@ -21,7 +21,7 @@ For bot I have used ctypes from windll, so read pixels from display, probably wo
 ## A new feature or improvement maybe?
 
 - Same as before but add the request instead of a bug.
-- Add label "feature" or "enhancement" instead.
+- Add label "enhancement" instead.
 
 # List of files
 
