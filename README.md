@@ -46,7 +46,8 @@ Same as previous but it will count the number of rules made and then enumerate t
 
 ### long_auto_text_with_comments.py
 
-First-second-third version of auto_text filled with comments to help Lemongrass understand what is going on there.
+First-second-third version of auto_text filled with comments to help Lemongrass understand what is going on there.\
+(She has little to no experience with coding)
 
 ### README.md
 
