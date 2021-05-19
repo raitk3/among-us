@@ -14,45 +14,20 @@ def send():
     print("ACTIVATE!")
 
     sentences = [
-        [
-            "Alright, the host has set us 6 rules in her Dojo:",
-            "So, the host has set us some rules:",
-            "Well, the host has set 6 rules here:",
-            "Some quick rules for better and more enjoyable gameplay:",
-            "Follow those 6 rules or get Banned:"
+        [   # 1st sentences
+            "This is sentence no 1",
+            "This could be the first sentence as well",
+            "This is the first as well"
         ],
 
-        [
-            "Rule 1: We don't say start here",
-            "Rule 1: Do NOT say start",
-            "Rule 1: ''Start'' is forbidden"
+        [   # 2nd ones
+            "This is sentence no 2.",
+            "This could be the second one as well."
         ],
 
-        [
-            "Rule 2: Purple is ALWAYS sus",
-            "Rule 2: Purple SUS...ALWAYS",
-            "Rule 2: Purple 24/7 SUS"
-        ],
-
-        [
-            "Rule 3: Don't group, team or camp cams",
-            "Rule 3: No teaming, No grouping and No camping in cams"
-        ],
-
-        [
-            "Rule 4: Don't use any hacks",
-            "Rule 4: No hacking"
-        ],
-
-        [
-            "Rule 5: Don't ask where, let the person speak",
-            "Rule 5: The one who reports or calls the meeting speaks first"
-        ],
-
-        [
-            "Rule 6: No sensitive people",
-            "Rule 6: Don't be sensitive"
-        ]
+        [   # 3rd one
+            "This is the 3rd sentence without any alternations"
+        ] # etcetc
     ]
     
     sentences_to_write = []
