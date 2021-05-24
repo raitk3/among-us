@@ -3,7 +3,7 @@ import keyboard
 import time
 import random
 
-CODE = "DIJTMF"
+CODE = "KJMPWQ"
 CROSS = (330, 320)
 TEXTBOX = (680, 700)
 ARROW = (860, 700)

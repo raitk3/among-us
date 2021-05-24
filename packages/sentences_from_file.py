@@ -1,0 +1,38 @@
+import keyboard
+import time
+import random
+
+
+def wait_seconds(seconds: float):
+    time_start = time.time()
+    while (time.time() - time_start < seconds):
+        if keyboard.is_pressed('shift'):
+            break
+
+def read():
+    list_of_strings = []
+    with open("lyrics.txt") as file:
+        for line in file.readlines():
+            list_of_strings.append(line.strip())
+    return list_of_strings
+
+def send():
+    print("ACTIVATE!")
+
+    sentences = read()
+    
+    for index, sentence in enumerate(sentences):
+        if index != 0:
+            wait_seconds(3)
+        if keyboard.is_pressed('shift'):
+            break
+        print(sentence)
+        keyboard.write(sentence)
+        wait_seconds(0.1)
+        print("SEND!")
+        keyboard.send('enter')
+
+
+if __name__ == '__main__':
+    keyboard.add_hotkey('ctrl+space', send, trigger_on_release=True)
+    keyboard.wait()
