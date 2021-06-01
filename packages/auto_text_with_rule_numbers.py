@@ -19,7 +19,7 @@ def send():
 
     sentences = [
         [
-            "Alright, the host hsas set us {number_of_rules} rules in her Dojo:",
+            "Alright, the host has set us {number_of_rules} rules in her Dojo:",
             "So, the host has set us some rules:",
             "Well, the host has set {number_of_rules} rules here:",
             "Some quick rules for better and more enjoyable gameplay:",
@@ -33,19 +33,14 @@ def send():
         ],
 
         [
-            "Purple is ALWAYS sus",
-            "Purple SUS...ALWAYS",
-            "Purple 24/7 SUS"
+            "Purple is ALWAYS sus (joke)",
+            "Purple SUS...ALWAYS (it's a joke)",
+            "Purple 24/7 SUS (jokingly but keep that in mind)"
         ],
 
         [
             "Don't group, team or camp cams",
             "No teaming, No grouping and No camping in cams"
-        ],
-
-        [
-            "Don't use any hacks",
-            "No hacking"
         ],
 
         [
@@ -55,15 +50,20 @@ def send():
 
         [
             "No sensitive people",
-            "Don't be sensitive"
+            "Don't be too sensitive"
+        ],
+
+        [
+            "WooHoo if you understand",
+            "WooHoo if you agree to the terms of this lobby"
         ]
     ]
 
     sentences_to_write = []
     for i, sentence_choices in enumerate(sentences):
-        if i == 0:
+        if i == 0 or i == (len(sentences)-1):
             sentences_to_write.append(random.choice(
-                sentence_choices).format(number_of_rules=len(sentences)-1))
+                sentence_choices).format(number_of_rules=len(sentences)-2))
         else:
             sentence_to_add = f"Rule {i}: "
             sentence_to_add += random.choice(sentence_choices)
