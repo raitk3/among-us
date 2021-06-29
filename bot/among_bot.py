@@ -4,7 +4,6 @@ from ctypes import windll
 import pyautogui
 import time
 
-
 USE_BUTTON = (1260, 660)
 ALIGN_CENTER = (884, 384)
 ALIGN_PARABOLA_CONSTANT = 0.0008
@@ -47,6 +46,26 @@ def check_coords(x=None, y=None):
     b = ((i_colour >> 16) & 0xff)
     return (r, g, b)
 
+def get_square_value(coords):
+    if check_coords(coords[0] + 12, coords[1] + 41)[0] < 70:
+        return 1
+    if check_coords(coords[0] + 13, coords[1] + 35)[0] < 70:
+        return 2
+    if check_coords(coords[0] + 19, coords[1] + 40)[0] < 70:
+        return 4
+    if check_coords(coords[0] + 7, coords[1] + 20)[0] < 70:
+        return 5
+    if check_coords(coords[0] + 26, coords[1] + 24)[0] < 70:
+        return 6
+    if check_coords(coords[0] + 15, coords[1] + 36)[0] < 70:
+        return 7
+    if check_coords(coords[0] + 23, coords[1] + 26)[0] < 70:
+        return 8
+    if check_coords(coords[0] + 26, coords[1] + 15)[0] < 70:
+        return 9
+    if check_coords(coords[0] + 10, coords[1] + 13)[0] < 70:
+        return 10
+    return 3
 
 #####CYCLE#####
 
@@ -135,9 +154,8 @@ def divert_1():
     switches_x = [443, 510, 578, 648, 717, 784, 854, 923]
     switches_y = 560
 
-    for i, x in enumerate(switches_x):
-        r, g, b = check_coords(x, switches_y)
-        if r > 100:
+    for x in switches_x:
+        if check_coords(x, switches_y)[0] > 100:
             drag_from((x, switches_y), (x, 400))
 
 
@@ -154,7 +172,18 @@ def fuel():
 
 
 def manifolds():
-    raise NotImplementedError
+    x_diff = 109
+    y_diff = 111
+    squares = []
+    for y in range(2):
+        y_coord = 304 + y*y_diff
+        for x in range(5):
+            x_coord = 447 + x*x_diff
+            squares.append(get_square_value((x_coord, y_coord)))
+    print(squares)
+    for i in range(1, 11):
+        square_to_press = squares.index(i)
+        pyautogui.click(447+(square_to_press %5)*x_diff, 304+(square_to_press // 5)*y_diff)
 
 
 def sample():
@@ -233,6 +262,7 @@ def wires():
 
 #####MAIN######
 
-# if __name__ == '__main__':
-    # do_task("align")
+if __name__ == '__main__':
+    time.sleep(2)
+    do_task("divert-1")
     # cycle()
