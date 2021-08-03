@@ -3,6 +3,8 @@
 from ctypes import windll
 import pyautogui
 import time
+import tkinter as tk
+from tkinter import ttk
 
 USE_BUTTON = (1260, 660)
 ALIGN_CENTER = (884, 384)
@@ -74,6 +76,7 @@ def move():
 
 
 def start_task():
+    pyautogui.click(10, 10)
     pyautogui.click(USE_BUTTON)
     time.sleep(1)
 
@@ -138,7 +141,7 @@ def card():
     time.sleep(1)
     pyautogui.moveTo(370, 300)
     pyautogui.mouseDown()
-    pyautogui.drag(700, 0, 1, button='left')
+    pyautogui.drag(700, 0, 2, button='left')
     pyautogui.mouseUp()
 
 
@@ -263,6 +266,30 @@ def wires():
 #####MAIN######
 
 if __name__ == '__main__':
-    time.sleep(2)
-    do_task("divert-1")
+    list_of_tasks = [
+        "align",
+        "asteroids",
+        "calibrate distributor",
+        "card",
+        "course",
+        "divert-1",
+        "divert-2",
+        "download-upload",
+        "fuel",
+        "manifolds",
+        "sample",
+        "scan",
+        "shields",
+        "simon says",
+        "stabilize",
+        "trash",
+        "wires"
+    ]
+    root = tk.Tk()
+    root.title("Tasker")
+    root.columnconfigure(0, weight=1, uniform="A")
+    root.columnconfigure(1, weight=1, uniform="A")
+    for i, task in enumerate(list_of_tasks):
+        ttk.Button(root, text=task, command = lambda task=task: do_task(task)).grid(row = i//2, column=i%2, sticky="NEWS")
+    root.mainloop()
     # cycle()
