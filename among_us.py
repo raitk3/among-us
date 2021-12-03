@@ -8,8 +8,12 @@ import os
 import pyautogui
 from pynput import mouse
 from enum import Enum, auto
+from ctypes import windll
 
-VERSION_NUMBER = "2 Beta"
+# VERSION_NUMBER = "3 Alpha"
+VERSION_NUMBER = str(time.strftime("%y%m%d"))
+#VERSION_NUMBER = "211030"
+VERSION = "ALPHA"
 
 
 def wait_seconds(seconds: float):
@@ -26,6 +30,8 @@ def get_coordinates():
                 if event.button == mouse.Button.left:
                     return [event.x, event.y]
             except Exception:
+                if check_break():
+                    return []
                 pass
 
 
@@ -33,25 +39,390 @@ def check_break():
     return keyboard.is_pressed("shift")
 
 
-class Maps(Enum):
-    SKELD = auto()
-    MIRA = auto()
-    POLUS = auto()
-    AIRSHIP = auto()
+class Map:
+    def __init__(self):
+        self.nodes = {
+
+        }
+
+
+class Tasks:
+    def __init__(self, program):
+        self.use_button = (1260, 660)
+        self.program = program
+        self.kill_status = False
+        self.tasks = {
+            "Align": (lambda: self.align(), True, True),
+            "Asteroids": (lambda: self.asteroids(), True, True),
+            "Calibrate distributor": (lambda: self.calibrate_distributor(), True, True),
+            "Chart course": (lambda: self.course(), False, True),
+            "Clean vent": (lambda: self.vent(), True, True),
+            "Divert 1": (lambda: self.divert_1(), True, True),
+            "Divert 2": (lambda: self.center_click(), True, True),
+            "Download/Upload": (lambda: self.download_upload(), True, True),
+            "Fix wiring": (lambda: self.wires(), True, True),
+            "Fuel engines": (lambda: self.fuel(), True, True),
+            "Inspect sample": (lambda: self.sample(), True, True),
+            "Leaves": (lambda: self.leaves(), True, True),
+            "Scan": (lambda: self.scan(), True, True),
+            "Shields": (lambda: self.shields(), True, True),
+            "Stabilize steering": (lambda: self.center_click(), True, True),
+            "Start reactor": (lambda: self.simon_says(), True, True),
+            "Swipe card": (lambda: self.card(), True, True),
+            "Trash": (lambda: self.trash(), True, True),
+            "Unlock manifolds": (lambda: self.manifolds(), True, True),
+            "COVID": (lambda: self.kill(), True, False)
+        }
+
+    #####HELP######
+
+    def wait_for_cross(self, cross):
+        while check_cross(cross):
+            if check_break():
+                break
+
+    def check_cross(self, coords):
+        return self.check_coords(coords[0], coords[1]) == (238, 238, 238)
+
+    def drag_from(self, coords_1, coords_2, waiting_time=0):
+        """
+        ToDo:
+        Make use of pyautogui.drag()
+        - Not useful
+        """
+
+        pyautogui.moveTo(coords_1)
+        if check_break():
+            return
+        pyautogui.mouseDown()
+        if check_break():
+            return
+        pyautogui.moveTo(coords_2)
+        if check_break():
+            pyautogui.mouseUp()
+            return
+        wait_seconds(waiting_time)
+        pyautogui.mouseUp()
+
+    def drag_slowly(self, coords_1, coords_2, time):
+        x_diff = (coords_2[0] - coords_1[0])
+        y_diff = (coords_2[1] - coords_1[1])
+        pyautogui.moveTo(coords_1)
+        pyautogui.mouseDown()
+        pyautogui.move(x_diff, y_diff, time)
+        pyautogui.mouseUp()
+
+    def get_wire_color(self, x, y):
+        r, g, b = self.check_coords(x, y)
+        if r > 250 and g < 10 and b < 1:
+            return "red"
+        elif r < 40 and g < 40 and b == 255:
+            return "blue"
+        elif r > 250 and g > 200 and b < 10:
+            return "yellow"
+        elif r > 250 and b > 250 and g < 10:
+            return "purple"
+        return "yo wtf"
+
+    def check_coords(self, x=None, y=None):
+        hdc = windll.user32.GetDC(0)
+        pixel = windll.gdi32.GetPixel(hdc, x, y)
+        #pixel = windll.gdi32.GetPixel(hdc, 684, 560)
+        i_colour = int(pixel)
+        r = (i_colour & 0xff)
+        g = ((i_colour >> 8) & 0xff)
+        b = ((i_colour >> 16) & 0xff)
+        return (r, g, b)
+
+    def check_simon_lights(self):
+        lights = [(340 + i*60, 225) for i in range(5)]
+        count = 0
+        while count < 1:
+            if check_break():
+                break
+            for i, light in enumerate(lights):
+                if self.check_coords(light[0], light[1])[1] > 150:
+                    print(f"{i}: on")
+                    count += 1
+                else:
+                    print(f"{i}: off")
+        return count
+
+    def get_square_value(self, coords):
+        if self.check_coords(coords[0] + 12, coords[1] + 41)[0] < 70:
+            return 1
+        if self.check_coords(coords[0] + 13, coords[1] + 35)[0] < 70:
+            return 2
+        if self.check_coords(coords[0] + 19, coords[1] + 40)[0] < 70:
+            return 4
+        if self.check_coords(coords[0] + 7, coords[1] + 20)[0] < 70:
+            return 5
+        if self.check_coords(coords[0] + 26, coords[1] + 24)[0] < 70:
+            return 6
+        if self.check_coords(coords[0] + 15, coords[1] + 36)[0] < 70:
+            return 7
+        if self.check_coords(coords[0] + 23, coords[1] + 26)[0] < 70:
+            return 8
+        if self.check_coords(coords[0] + 26, coords[1] + 15)[0] < 70:
+            return 9
+        if self.check_coords(coords[0] + 10, coords[1] + 13)[0] < 70:
+            return 10
+        return 3
+
+    def toggle_kill(self):
+        self.kill_status = not self.kill_status
+    #####CYCLE#####
+
+    def move(self):
+        raise NotImplementedError
+
+    def start_task(self):
+        pyautogui.click(10, 10)
+        print("START!")
+        pyautogui.click(self.use_button)
+        wait_seconds(0.5)
+
+    def do_task(self, task_to_do):
+        print(f"Doing {task_to_do}.")
+        task = self.tasks[task_to_do]
+        if task[2]:
+            self.start_task()
+        task[0]()
+        print("Done!")
+        if task[2]:
+            wait_seconds(2)
+
+    #####TASKS#####
+
+    def align(self):
+        center = (884, 384)
+        align_parabola_constant = 0.0008
+        range_of_align_up_and_down_values = range(-277, 277, 20)
+        for x in range_of_align_up_and_down_values:
+            y = int(align_parabola_constant * x ** 2)
+            actual_coords = (center[0] + y, center[1] + x)
+            r, g, b = self.check_coords(actual_coords[0], actual_coords[1])
+            if max(r, g, b) > 70:
+                self.drag_from(actual_coords, center)
+                break
+            if check_break():
+                break
+
+    def asteroids(self):
+        cross = (340, 92)
+        origin = (500, 200)
+        size = 396
+        step = 10
+        while self.check_cross(cross):
+            for y in range(0, size+1, step):
+                coord_x, coord_y = origin[0]+size, origin[1]+y
+                if check_break():
+                    return
+                # pyautogui.moveTo(coord_x, coord_y)
+                pyautogui.click(coord_x, coord_y)
+
+    def calibrate_distributor(self):
+        while self.check_coords(875, 170) == (0, 0, 0):
+            if check_break():
+                return
+            continue
+        pyautogui.click(875, 220)
+        while self.check_coords(875, 350) == (0, 0, 0):
+            if check_break():
+                return
+            continue
+        pyautogui.click(875, 420)
+        while self.check_coords(875, 540) == (0, 0, 0):
+            if check_break():
+                return
+            continue
+        pyautogui.click(875, 600)
+
+    def card(self):
+        pyautogui.click(580, 580)
+        wait_seconds(1)
+
+        if check_break():
+            return
+        self.drag_slowly((370, 300), (1030, 300), 1.05)
+        pyautogui.mouseUp()
+
+    def center_click(self):
+        pyautogui.click(683, 383)
+
+    def course(self):
+        raise NotImplementedError
+
+    def divert_1(self):
+        switches_x = [443, 510, 578, 648, 717, 784, 854, 923]
+        switches_y = 560
+
+        for x in switches_x:
+            if self.check_coords(x, switches_y)[0] > 100:
+                self.drag_from((x, switches_y), (x, 400))
+
+    def download_upload(self):
+        cross = (238, 169)
+        pyautogui.click(680, 470)
+        self.wait_for_cross(cross)
+
+    def fuel(self):
+        pyautogui.moveTo(1040, 620)
+        pyautogui.mouseDown()
+        wait_seconds(4)
+        pyautogui.mouseUp()
+
+    def leaves(self):
+        false = [(140, 166, 214), (207, 233, 247)]
+        positive = [(198, 146, 66), (71, 77, 19)]
+        steps = 50
+        field_x = range(496, 996, steps)
+        field_y = range(70, 697, steps)
+        cross = (340, 110)
+        finish = (380, 380)
+
+        while self.check_cross(cross):
+            if check_break():
+                break
+            for x in field_x:
+                if check_break() or not self.check_cross(cross):
+                    break
+                for y in field_y:
+                    if check_break() or not self.check_cross(cross):
+                        break
+                    if self.check_coords(x, y)[2] < 150:
+                        self.drag_from((x, y), finish)
+
+        print("Finished leaves!")
+
+    def manifolds(self):
+        x_diff = 109
+        y_diff = 111
+        squares = []
+        for y in range(2):
+            y_coord = 304 + y*y_diff
+            for x in range(5):
+                x_coord = 447 + x*x_diff
+                squares.append(self.get_square_value((x_coord, y_coord)))
+        print(squares)
+        for i in range(1, 11):
+            square_to_press = squares.index(i)
+            pyautogui.click(447+(square_to_press % 5)*x_diff,
+                            304+(square_to_press // 5)*y_diff)
+
+    def sample(self):
+        pyautogui.click(900, 670)
+        wait_seconds(62)
+        for i in range(5):
+            x = 520 + 80 * i
+            button_y = 600
+            liquid_y = 420
+            print(self.check_coords(x, liquid_y))
+            if self.check_coords(x, liquid_y) == (246, 134, 134):
+                pyautogui.click(x, button_y)
+                break
+
+    def scan(self):
+        cross = (340, 110)
+        self.wait_for_cross(cross)
+
+    def shields(self):
+        coords = [
+            (682, 288),  # 241, 21, 25
+            (602, 329),  # 242, 21, 26
+            (602, 450),  # 241, 22, 27
+            (671, 482),  # 240, 22, 27
+            (762, 450),  # 236, 30, 37
+            (758, 319),  # 244, 17, 20
+            (740, 318)  # 241, 21, 26
+        ]
+        for coord in coords:
+            g = self.check_coords(coord[0], coord[1])[1]
+            if g < 50:
+                pyautogui.click(coord)
+
+    def simon_says(self):
+        lights = []
+        buttons = []
+        for row in range(340, 521, 90):
+            for column in range(370, 551, 90):
+                lights.append((column, row))
+            for column in range(810, 991, 90):
+                buttons.append((column, row))
+        i = self.check_simon_lights()
+        while i < 6:
+            print(i)
+            order_to_press = []
+            while len(order_to_press) < i:
+                for j, light in enumerate(lights):
+                    if check_break():
+                        return
+                    if self.check_coords(light[0], light[1]) != (0, 0, 0):
+                        order_to_press.append(buttons[j])
+                        wait_seconds(0.2)
+            print([buttons.index(element) for element in order_to_press])
+            wait_seconds(0.5)
+            for button in order_to_press:
+                if check_break():
+                    return
+                pyautogui.click(button)
+                if self.check_coords(button[0], button[1]) == (189, 43, 0):
+                    i = 0
+            i += 1
+
+    def trash(self):
+        self.drag_from((900, 300), (900, 500), 2)
+
+    def vent(self):
+        self.center_click()
+        cross = (340, 90)
+        origin = (383, 116)
+        size = (600, 530)
+        step = 50
+        for x in range(origin[0], origin[0] + size[0] + 1, step):
+            for y in range(origin[1], origin[1] + size[1] + 1, step):
+                if self.check_cross(cross) and not check_break():
+                    pyautogui.click(x, y)
+                else:
+                    return
+
+    def wires(self):
+        x = [400, 940]
+        y = [193, 326, 458, 590]
+        for i in range(4):
+            wire_color = self.check_coords(x[0], y[i])
+            for j in range(4):
+                other_wire = self.check_coords(x[1], y[j])
+                if wire_color == other_wire:
+                    self.drag_from((x[0], y[i]), (x[1], y[j]))
+                    break
+
+    def kill(self):
+        self.toggle_kill()
+        while self.kill_status:
+            print("kill")
+            keyboard.press_and_release("q")
+            if check_break():
+                self.kill_status = False
+            wait_seconds(0.1)
+            self.program.window.update()
 
 
 class State(Enum):
-    MENU = 0
-    JOIN = 1
-    SENTENCES = 2
-    SETTINGS = 3
+    MENU = auto()
+    JOIN = auto()
+    SENTENCES = auto()
+    SETTINGS = auto()
+    TASKS = auto()
+    ABOUT = auto()
 
 
 class Data:
     def __init__(self):
         self.rejoin_code = ""
         self.data = self.read_data_from_file()
-        self.current_map = "SKELD"
+        self.sentences = self.data["sentences"]
+        self.current_pack = 0
 
     def read_data_from_file(self):
         print("Reading data from file.")
@@ -63,14 +434,11 @@ class Data:
             print("File is missing, loading base stuff.")
             with open("data.json", "w", encoding='utf-8'):
                 return {
-                    "coords": [[330, 320], [680, 650], [860, 650]],
+                    "coords": [[330, 320], [680, 650], [680, 550], [860, 650]],
                     "cooldowns": [3.0, 0.2],
-                    "sentences": {
-                        "SKELD": ["These", "are", "for", "SKELD"],
-                        "MIRA": ["These", "are", "for", "MIRA"],
-                        "POLUS": ["These", "are", "for", "POLUS"],
-                        "AIRSHIP": ["These", "are", "for", "AIRSHIP"]
-                    }
+                    "sentences": [
+                        ["S1", ["Sentence", "packet", "1"]]
+                    ]
                 }
 
     def write_data_to_file(self):
@@ -78,44 +446,73 @@ class Data:
         with open("data.json", "w", encoding='utf-8') as file:
             json.dump(self.data, file)
 
-    def add_sentence(self, program, map_to_add, textboxes):
-        print(f"Add another sentence to {map_to_add}")
-        self.save(map_to_add, [el.get() for el in textboxes])
-        self.data["sentences"][map_to_add].append("")
+    def add_sentence(self, program, pack_to_add, textboxes):
+        print(f"Add another sentence to {pack_to_add}")
+        self.save(pack_to_add, [el.get() for el in textboxes])
+        self.sentences[int(pack_to_add)][1].append("")
         program.draw()
 
-    def remove_sentence(self, program, map_to_remove, textboxes):
-        print(f"Remove a sentence from {map_to_remove}")
-        self.save(map_to_remove, [el.get() for el in textboxes])
-        if len(self.get_sentences_for_map(map_to_remove)) > 1:
+    def remove_sentence(self, program, pack_to_remove, textboxes):
+        print(f"Remove a sentence from {pack_to_remove}")
+        self.save(pack_to_remove, [el.get() for el in textboxes])
+        if len(self.get_sentences_pack(pack_to_remove)) > 1:
             print("    More than 1 sentence, can do")
-            self.save(map_to_remove, [el.get() for el in textboxes[:-1]])
+            self.save(pack_to_remove, [el.get() for el in textboxes[:-1]])
         else:
             print("    But I don't have enough sentences...")
         program.draw()
 
-    def get_sentences_for_map(self, map_to_get):
-        print(f"Get sentences for {map_to_get}")
-        return self.data["sentences"][map_to_get]
+    def add_sentence_pack(self):
+        self.sentences.append(
+            [len(self.sentences), ["Sentence"]])
+        self.current_pack = len(self.sentences)-1
+
+    def remove_current_sentence_pack(self):
+        if len(self.sentences) > 1:
+            self.sentences.remove(self.current_pack)
+        self.current_pack = max(len(self.sentences)-1, 0)
+
+    def get_sentences_pack(self, pack_to_get):
+        print(f"Get sentences for {pack_to_get}")
+        return self.sentences[pack_to_get][1]
+
+    def set_next_pack(self):
+        self.current_pack += 1
+        self.current_pack %= len(self.sentences)
+
+    def set_previous_pack(self):
+        self.current_pack -= 1
+        self.current_pack %= len(self.sentences)
+
+    def get_headers(self):
+        return [el[0] for el in self.sentences]
 
     def get_cross_coords(self):
         return self.data["coords"][0]
 
-    def get_textbox_coords(self):
+    def get_textbox_1_coords(self):
         print("Get coords for textbox")
         return self.data["coords"][1]
 
-    def get_arrow_coords(self):
-        print("Get coords for arrow")
+    def get_textbox_2_coords(self):
+        print("Get coords for textbox")
         return self.data["coords"][2]
 
-    def get_current_map(self):
-        print("Get currently used map.")
-        return self.current_map
+    def get_arrow_coords(self):
+        print("Get coords for arrow")
+        return self.data["coords"][3]
 
-    def set_current_map(self, new_map, event=None):
-        print(f"Set current map to {new_map}")
-        self.current_map = new_map
+    def get_current_pack(self):
+        print("Get currently used sentence pack.")
+        return self.current_pack
+
+    def set_current_pack(self, new_pack, event=None):
+        print(f"Set current map to {new_pack}")
+        self.current_pack = int(new_pack)
+
+    def rename_current_pack(self, new_name):
+        print(f"Renaming pack {self.current_pack} to {new_name}.")
+        self.sentences[self.current_pack][0] = new_name
 
     def get_cooldown(self):
         print("Get current cooldown for chat")
@@ -148,13 +545,13 @@ class Data:
 
     def save(self, map_to_save, sentences):
         print(f"Save the sentences for {map_to_save}")
-        self.data["sentences"][map_to_save] = sentences
+        self.sentences[int(map_to_save)][1] = sentences
         self.write_data_to_file()
 
-    def send(self, current_map, textboxes):
+    def send(self, current_pack, textboxes):
         sentences = [el.get() for el in textboxes]
         cooldowns = (self.get_cooldown(), self.get_enter_cooldown())
-        self.save(current_map, sentences)
+        self.save(current_pack, sentences)
         print("The sentences are:")
         print(*sentences, sep="\n")
         for index, sentence in enumerate(sentences):
@@ -169,7 +566,7 @@ class Data:
             keyboard.send('enter')
 
     def rejoin(self, window, code):
-        self.rejoin_code = code[0].get()
+        self.rejoin_code = code[0].get().upper()
         print("Rejoin code is: ", self.rejoin_code)
         while True:
             wait_seconds(2)
@@ -179,31 +576,45 @@ class Data:
             print("Click cross")
             pyautogui.click(self.data["coords"][0])
             time.sleep(0.2)
-            print("Click textbox")
+            print("Click textbox 1")
             pyautogui.click(self.data["coords"][1])
-            time.sleep(0.1)
+            time.sleep(0.2)
+            print("Click textbox 2")
+            pyautogui.click(self.data["coords"][2])
+            time.sleep(0.2)
             print("Write the code")
             pyautogui.write(self.rejoin_code)
             print("Press the arrow")
-            pyautogui.click(self.data["coords"][2])
+            pyautogui.click(self.data["coords"][3])
 
     def set_cross(self, coords):
-        print(f"Set cross coords to {coords}")
-        self.data["coords"][0] = coords
+        if len(coords) == 2:
+            print(f"Set cross coords to {coords}")
+            self.data["coords"][0] = coords
 
-    def set_textbox(self, coords):
-        print(f"Set textbox coords to {coords}")
-        self.data["coords"][1] = coords
+    def set_textbox_1(self, coords):
+        if len(coords) == 2:
+            print(f"Set textbox coords to {coords}")
+            self.data["coords"][1] = coords
+
+    def set_textbox_2(self, coords):
+        if len(coords) == 2:
+            print(f"Set textbox coords to {coords}")
+            self.data["coords"][2] = coords
 
     def set_arrow(self, coords):
-        print(f"Set arrow coords to {coords}")
-        self.data["coords"][2] = coords
+        if len(coords) == 2:
+            print(f"Set arrow coords to {coords}")
+            self.data["coords"][3] = coords
 
 
 class Program:
     def __init__(self, title):
         self.data = Data()
+        self.tasks = Tasks(self)
         self.window = tk.Tk()
+        self.style = ttk.Style()
+        self.configure_style()
         self.title = title
         self.window.title(self.title)
         try:
@@ -220,25 +631,106 @@ class Program:
         self.states = [State.MENU]
         self.draw()
 
+    def configure_style(self):
+        bg = "black"
+        fg = "white"
+        active = "lime"
+        self.font = ("Arial", 16)
+        header_font = ("Arial Bold", 18)
+        self.style.theme_use('clam')
+
+        self.window.configure(bg="black")
+
+        self.style.configure("Borderless.TLabel",
+                             background=bg,
+                             foreground=bg,
+                             relief="flat",
+                             font=header_font,
+                             )
+        self.style.configure("Header.TLabel",
+                             background=bg,
+                             foreground=fg,
+                             font=header_font,
+                             relief="raised")
+
+        self.style.configure("Normal.TLabel",
+                             background=bg,
+                             foreground=fg,
+                             font=self.font,
+                             relief="raised")
+
+        self.style.configure("About.TLabel",
+                             background=bg,
+                             foreground=fg,
+                             font=self.font)
+
+        self.style.configure("Normal.TButton",
+                             background=bg,
+                             foreground=fg,
+                             font=self.font
+                             )
+
+        self.style.map('TButton', foreground=[
+                       ('active', active)], background=[('active', bg)])
+
+        self.style.configure("Normal.TEntry",
+                             background=bg,
+                             foreground=fg,
+                             fieldbackground=bg
+                             )
+
+        self.style.map('Normal.TCombobox', fieldbackground=[('readonly', bg)])
+        self.style.map('Normal.TCombobox', selectbackground=[('readonly', bg)])
+        self.style.map('Normal.TCombobox', selectforeground=[('readonly', fg)])
+        self.style.configure('Normal.TCombobox', foreground=fg, background=fg)
+
+        self.style.layout('Normal.TSpinbox', [('Spinbox.field',
+                                               {'expand': 1,
+                                                'sticky': 'nswe',
+                                                'children': [('null',
+                                                              {'side': 'right',
+                                                               'sticky': 'ns',
+                                                               'children': [('Spinbox.uparrow', {'side': 'top', 'sticky': 'e'}),
+                                                                            ('Spinbox.downarrow', {'side': 'bottom', 'sticky': 'e'})]}),
+                                                             ('Spinbox.padding',
+                                                              {'sticky': 'nswe',
+                                                               'children': [('Spinbox.textarea', {'sticky': 'nswe'})]})]})])
+
+        self.style.configure("Normal.TSpinbox",
+                             background=fg,
+                             foreground=fg,
+                             fieldbackground=bg,
+                             arrowsize=17)
+
     def add_header(self, title):
         print("Adding header")
         if len(self.get_all_states()) > 1:
             print(
                 "The states list is longer than 1, so I could go back...add Back button")
-            ttk.Button(self.window, text="Back", command=lambda: self.set_all_states(self.get_all_states()[:-1])).grid(
+            ttk.Button(self.window, text="Back", style="Normal.TButton", command=lambda: self.set_all_states(self.get_all_states()[:-1])).grid(
                 row=0, column=0, sticky="NESW")
+        else:
+            ttk.Button(self.window, text="Exit", style="Normal.TButton",
+                       command=lambda: exit()).grid(row=0, column=3, sticky="NESW")
+            ttk.Button(self.window, text="About", style="Normal.TButton", command=lambda: self.set_state(
+                State.ABOUT)).grid(row=0, column=0, sticky="NESW")
+
         print(f"The title is '{title}'")
-        ttk.Label(self.window, text=title, anchor="center").grid(
-            row=0, column=1, columnspan=2, sticky="NESW")
+        ttk.Label(self.window, style="Header.TLabel", text=title.upper(), anchor="center").grid(
+            row=0, column=1, columnspan=2, rowspan=2, sticky="NESW")
+        ttk.Label(self.window, style="Borderless.TLabel",
+                  text="l").grid(row=1, column=0, sticky="NEWS")
         if self.get_current_state() not in [State.SETTINGS, State.MENU]:
             print("It's not Settings nor menu, so let's add Settings button, too")
-            ttk.Button(self.window, text="Settings", command=lambda: self.set_state(State.SETTINGS)).grid(
+            ttk.Button(self.window, text="Settings", style="Normal.TButton", command=lambda: self.set_state(State.SETTINGS)).grid(
                 row=0, column=3, sticky="NESW")
 
-    def add_buttons(self, buttons, from_row, columnspan):
+    def add_buttons(self, buttons, from_row, columnspan, columns=1):
         for i, el in enumerate(buttons):
-            ttk.Button(self.window, text=el, command=buttons[el]).grid(
-                row=from_row + i, column=0, sticky="NESW", columnspan=columnspan)
+            com, enabled = buttons[el]
+            ttk.Button(self.window, text=el, style="Normal.TButton",
+                       command=com, state=('enabled' if enabled else 'disabled')).grid(
+                row=from_row + (i // columns), column=(i*columnspan) % (columns*columnspan), sticky="NESW", columnspan=columnspan)
 
     def clear_window(self):
         print("Let's clear everything")
@@ -258,7 +750,6 @@ class Program:
             ("cross", lambda c=new_coords: self.data.set_cross(c)),
             ("textbox", lambda c=new_coords: self.data.set_textbox(c)),
             ("arrow", lambda c=new_coords: self.data.set_arrow(c))]
-        print(f"New coords for {type_definitions[type][0]} are {new_coords}")
         type_definitions[type][1]()
         self.draw()
 
@@ -270,8 +761,9 @@ class Program:
         coordinates = [el.get() for el in coords]
         cds = [el.get() for el in cooldowns]
         self.data.set_cross(coordinates[:2])
-        self.data.set_textbox(coordinates[2:4])
-        self.data.set_arrow(coordinates[4:6])
+        self.data.set_textbox_1(coordinates[2:4])
+        self.data.set_textbox_2(coordinates[4:6])
+        self.data.set_arrow(coordinates[6:8])
         self.data.write_data_to_file()
 
     def set_state(self, state: State):
@@ -288,138 +780,204 @@ class Program:
         else:
             print("Can't do, list isn't long enough :c")
 
+    def draw_about(self):
+        self.add_header("About")
+        data = {
+            "Version": VERSION_NUMBER + "_" + VERSION if len(VERSION) > 0 else VERSION_NUMBER,
+            "Author": "Rait Kulbok"
+        }
+        for i, el in enumerate(data):
+            ttk.Label(self.window, text=el+":", style="About.TLabel",
+                      anchor="e").grid(row=i+2, column=0, columnspan=2, sticky="NEWS")
+            ttk.Label(self.window, text=" " + data[el], style="About.TLabel", anchor="w").grid(
+                row=i+2, column=2, columnspan=2, sticky="NEWS")
+
     def draw_menu(self):
         menu_items = {
-            "Join a lobby": lambda: self.set_state(State.JOIN),
-            "Sentences": lambda: self.set_state(State.SENTENCES),
-            "Settings": lambda: self.set_state(State.SETTINGS)
+            "Join a lobby": (lambda: self.set_state(State.JOIN), True),
+            "Sentences": (lambda: self.set_state(State.SENTENCES), True),
+            "Tasks": (lambda: self.set_state(State.TASKS), True),
+            "Settings": (lambda: self.set_state(State.SETTINGS), True),
         }
         self.add_header(self.title)
-        self.add_buttons(menu_items, 1, 4)
+        self.add_buttons(menu_items, 2, 2, 2)
 
     def draw_rejoin(self):
         self.add_header("Join a lobby")
         coords = []
         code = []
+        origin_x, origin_y = 2, 0
 
-        ttk.Label(self.window, text="CODE").grid(
-            row=1, column=0, sticky="NEWS")
+        ttk.Label(self.window, style="Normal.TLabel", text="Code").grid(
+            row=origin_x + 1, column=origin_y, sticky="NEWS")
 
-        tb = ttk.Entry(self.window)
+        tb = ttk.Entry(self.window, style="Normal.TEntry", font=self.font)
         code.append(tb)
         tb.insert(10, self.data.rejoin_code)
-        tb.grid(row=1, column=1, sticky="NESW",
+        tb.grid(row=origin_x + 1, column=origin_y + 1, sticky="NESW",
                 columnspan=2, padx=1, pady=1)
-        ttk.Button(self.window, text="JOIN", command=lambda coords=coords, code=code: self.data.rejoin(self, code)).grid(
-            row=1, column=3, sticky="NESW")
+        ttk.Button(self.window, text="Join", style="Normal.TButton", command=lambda coords=coords, code=code: self.data.rejoin(self, code)).grid(
+            row=origin_x + 1, column=origin_y + 3, sticky="NESW")
 
     def draw_sentences(self, event=None):
+        origin_x, origin_y = 2, 0
         self.add_header("Sentences")
         textboxes = []
-        dropdown = ttk.Combobox(self.window, values=[
-                                str(el).split(".")[1] for el in Maps], state="readonly")
-        dropdown.set(self.data.get_current_map())
-        dropdown.grid(row=1, column=0, columnspan=3,
-                      padx=1, pady=1, sticky="NEWS")
-        current_map = dropdown.get()
-        ttk.Button(self.window, text="Set", command=lambda d=dropdown, m=current_map: (
-            self.data.set_current_map(d.get()), self.draw())).grid(row=1, column=3, sticky="NESW")
-        sentences = self.data.get_sentences_for_map(current_map)
+        current_pack = self.data.get_current_pack()
+        sentences = self.data.get_sentences_pack(current_pack)
+
+        ttk.Button(self.window, text="<-",
+                   style="Normal.TButton",
+                   command=lambda: (self.data.set_previous_pack(), self.draw())).grid(row=origin_x + 1, column=origin_y, sticky="NESW")
+
+        header = ttk.Entry(self.window, style="Normal.TEntry", font=self.font)
+        header.insert(10, string=self.data.get_headers()[current_pack])
+        header.grid(row=origin_x + 1, column=origin_y + 1, columnspan=2,
+                    padx=1, pady=1, sticky="NEWS")
+        
+        ttk.Button(self.window, text="->",
+                   style="Normal.TButton",
+                   command=lambda: (self.data.set_next_pack(), self.draw())).grid(row=origin_x + 1, column=origin_y + 3, sticky="NESW")
+
+        row_3 = {
+            "Rename": (lambda h=header: (self.data.rename_current_pack(h.get()), self.draw()), True),
+            "Save": (lambda: self.draw(), True),
+            "Remove": (lambda: self.draw(), True),
+            "Add": (lambda: (self.data.add_sentence_pack(), self.draw()), True),
+        }
+
+        self.add_buttons(row_3, 4, 1, 4)
+
         for i, sentence in enumerate(sentences):
             ttk.Label(
-                self.window, text=f"Sentence {i+1}").grid(row=i + 2, column=0, sticky="NESW")
-            tb = ttk.Entry(self.window)
+                self.window, text=f"Sentence {i+1}", style="Normal.TLabel").grid(row=origin_x + i + 3, column=origin_y, sticky="NESW")
+            tb = ttk.Entry(self.window,
+                           style="Normal.TEntry",
+                           font=self.font,)
             textboxes.append(tb)
             tb.insert(10, string=sentence)
-            tb.grid(row=i + 2, column=1, columnspan=3,
+            tb.grid(row=origin_x + i + 3, column=origin_y + 1, columnspan=3,
                     sticky="NESW", padx=1, pady=1)
-        ttk.Button(self.window, text="Remove sentence", command=lambda tb=textboxes, m=current_map: self.data.remove_sentence(
-            self, m, tb)).grid(row=len(sentences)+2, column=0, columnspan=2, sticky="NESW")
-        ttk.Button(self.window, text="Add sentence", command=lambda tb=textboxes, m=current_map: self.data.add_sentence(
-            self, m, tb)).grid(row=len(sentences)+2, column=2, columnspan=2, sticky="NESW")
-        ttk.Button(self.window, text="Send!", command=lambda tb=textboxes, m=current_map:
-                   self.data.send(m, tb)).grid(row=len(sentences)+3, column=0, columnspan=4, sticky="NESW")
-        for j in range(4):
-            self.window.columnconfigure(j, weight=1, uniform='fourth')
+
+        self.add_buttons(
+            {
+                "Remove sentence": 
+                (lambda tb=textboxes, cp=current_pack: 
+                self.data.remove_sentence(self, cp, tb), True),
+                "Add sentence": 
+                (lambda tb=textboxes, cp=current_pack: 
+                self.data.add_sentence(self, cp, tb), True)
+            },
+            origin_x + len(sentences) + 3,
+            2, 2)
+        
+        ttk.Button(self.window, text="Send!", style="Normal.TButton", command=lambda tb=textboxes, cp=current_pack:
+                   self.data.send(cp, tb)).grid(row=origin_x + len(sentences)+4, column=origin_y, columnspan=4, sticky="NESW")
         self.window.mainloop()
 
     def draw_settings(self):
         self.add_header("Settings")
         buttons = {
             "CROSS": (lambda: self.get_new_coords(0), "Get coordinates"),
-            "TEXTBOX": (lambda: self.get_new_coords(1), "Get coordinates"),
-            "ARROW": (lambda: self.get_new_coords(2), "Get coordinates"),
+            "TEXTBOX 1": (lambda: self.get_new_coords(1), "Get coordinates"),
+            "TEXTBOX 2": (lambda: self.get_new_coords(2), "Get coordinates"),
+            "ARROW": (lambda: self.get_new_coords(3), "Get coordinates"),
             "CHAT COOLDOWN": (lambda x: print("Cooldown"), "Set cooldown"),
             "ENTER COOLDOWN": (lambda x: print("Enter"), "Set enter cooldown")
         }
-
+        origin_x, origin_y = 2, 0
         cross = self.data.get_cross_coords()
-        textbox = self.data.get_textbox_coords()
+        textbox_1 = self.data.get_textbox_1_coords()
+        textbox_2 = self.data.get_textbox_2_coords()
         arrow = self.data.get_arrow_coords()
 
         coords = []
         cooldowns = []
 
-        ttk.Button(self.window, text="Save", command=lambda c=coords,
+        ttk.Button(self.window, text="Save", style="Normal.TButton", command=lambda c=coords,
                    cd=cooldowns: self.save_settings(c, cd)).grid(row=0, column=3, sticky="NEWS")
         for j, data_element in enumerate(buttons):
             ttk.Label(
-                self.window, text=data_element).grid(row=j+1, column=0, sticky="NESW")
-            if j < 3:
+                self.window, style="Normal.TLabel", text=data_element.capitalize()).grid(row=origin_x + j + 1, column=origin_y, sticky="NESW")
+            if j < 4:
                 for i in range(2):
 
-                    tb = ttk.Entry(self.window)
+                    tb = ttk.Entry(
+                        self.window, style="Normal.TEntry", font=self.font)
                     coords.append(tb)
                     if data_element == "CROSS":
                         tb.insert(
                             10, string=cross[i % 2])
-                    elif data_element == "TEXTBOX":
+                    elif data_element == "TEXTBOX 1":
                         tb.insert(
-                            10, string=textbox[i % 2])
+                            10, string=textbox_1[i % 2])
+                    elif data_element == "TEXTBOX 2":
+                        tb.insert(
+                            10, string=textbox_2[i % 2])
                     elif data_element == "ARROW":
                         tb.insert(
                             10, string=arrow[i % 2])
-                    tb.grid(row=j+1, column=i + 1,
+                    tb.grid(row=origin_x + j+1, column=origin_y + i + 1,
                             sticky="NESW", padx=1, pady=1)
                 ttk.Button(self.window, text=buttons[data_element][1],
+                           style="Normal.TButton",
                            # state="disabled",
                            command=buttons[data_element][0]).grid(
-                    row=j + 1, column=3, sticky="NESW")
+                    row=origin_x + j + 1, column=origin_y + 3, sticky="NESW")
             else:
-                spinbox = ttk.Spinbox(self.window, values=[
-                                      l / 10 for l in range(1, 100)])
+                spinbox = ttk.Spinbox(self.window,
+                                      values=[l / 10 for l in range(1, 100)],
+                                      style="Normal.TSpinbox",
+                                      font=self.font
+                                      )
                 cooldowns.append(spinbox)
                 if data_element == "CHAT COOLDOWN":
                     spinbox.insert(0, self.data.get_cooldown())
-                    ttk.Button(self.window, text=buttons[data_element][1], command=lambda c=cooldowns: self.data.set_cooldown(cooldowns[0].get())).grid(
-                        row=j + 1, column=3, sticky="NESW")
+                    ttk.Button(self.window, text=buttons[data_element][1], style="Normal.TButton", command=lambda c=cooldowns: self.data.set_cooldown(cooldowns[0].get())).grid(
+                        row=origin_x + j + 1, column=origin_y + 3, sticky="NESW")
                 if data_element == "ENTER COOLDOWN":
                     spinbox.insert(0, self.data.get_enter_cooldown())
-                    ttk.Button(self.window, text=buttons[data_element][1], command=lambda c=cooldowns: self.data.set_enter_cooldown(cooldowns[1].get())).grid(
-                        row=j + 1, column=3, sticky="NESW")
-                spinbox.grid(row=j+1, column=1, sticky="NEWS",
-                             padx=1, pady=1, columnspan=2)
+                    ttk.Button(self.window, text=buttons[data_element][1], style="Normal.TButton", command=lambda c=cooldowns: self.data.set_enter_cooldown(cooldowns[1].get())).grid(
+                        row=origin_x + j + 1, column=origin_y + 3, sticky="NESW")
+                spinbox.grid(row=origin_x + j+1, column=origin_y + 1,
+                             padx=1, pady=1, columnspan=2, sticky="NEWS")
+
+    def draw_tasks(self):
+        self.add_header("Tasks")
+        tasks_with_start = {}
+        for task in self.tasks.tasks:
+            def com(t=task): return self.tasks.do_task(t)
+            en = self.tasks.tasks[task][1]
+            tasks_with_start[task] = (com, en)
+        self.add_buttons(tasks_with_start, 2, 1, 4)
+        self.window.mainloop()
+
+    def draw_NA(self):
+        self.add_header("UHHH")
+        ttk.Label(self.window, text="It looks like this state doesn't have a visual",
+                  style="Normal.TLabel", anchor="center") \
+            .grid(row=1, column=0, columnspan=4, sticky="NEWS")
 
     def draw(self):
         current = self.get_current_state()
+        for j in range(4):
+            self.window.columnconfigure(j, weight=1, uniform='fourth')
         print("Current state is", current)
         self.clear_window()
-        if current == State.MENU:
-            print("Let's draw the menu window")
-            self.draw_menu()
-        elif current == State.JOIN:
-            print("Let's draw the joining window")
-            self.draw_rejoin()
-        elif current == State.SENTENCES:
-            print("Let's draw the sentences window")
-            self.draw_sentences()
-        elif current == State.SETTINGS:
-            print("Let's draw the settings window")
-            self.draw_settings()
+        drawable_states = {
+            State.MENU: lambda: self.draw_menu(),
+            State.JOIN: lambda: self.draw_rejoin(),
+            State.SENTENCES: lambda: self.draw_sentences(),
+            State.SETTINGS: lambda: self.draw_settings(),
+            State.TASKS: lambda: self.draw_tasks(),
+            State.ABOUT: lambda: self.draw_about()
+        }
+        if current in drawable_states:
+            drawable_states[current]()
         else:
-            ttk.Label(self.window, text="NOT IMPLEMENTED YET").pack()
+            self.draw_NA()
         self.window.mainloop()
 
 
 if __name__ == '__main__':
-    program = Program(f"Among Us Toolkit V{VERSION_NUMBER}")
+    program = Program("Among Us Toolkit")
