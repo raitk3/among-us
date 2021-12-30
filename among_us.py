@@ -1,19 +1,22 @@
 import tkinter as tk
-from tkinter import ttk
 import json
 import keyboard
 import time
+import numpy as np
 import base64
 import os
 import pyautogui
+from tkinter import ttk
+from PIL import ImageGrab
 from pynput import mouse
 from enum import Enum, auto
-from ctypes import windll
 
 # VERSION_NUMBER = "3 Alpha"
 VERSION_NUMBER = str(time.strftime("%y%m%d"))
-#VERSION_NUMBER = "211030"
+# VERSION_NUMBER = "211204"
 VERSION = "ALPHA"
+DISPLAY_X = 1366
+DISPLAY_Y = 768
 
 
 def wait_seconds(seconds: float):
@@ -36,7 +39,7 @@ def get_coordinates():
 
 
 def check_break():
-    return keyboard.is_pressed("shift")
+    return keyboard.is_pressed("shift") or keyboard.is_pressed("Esc")
 
 
 class Map:
@@ -76,13 +79,20 @@ class Tasks:
 
     #####HELP######
 
+    def get_screenshot(self):
+        image = ImageGrab.grab(bbox=(0, 0, 1366, 768))
+        pixels = image.load()
+        return pixels
+
+    def check_cross(self, coords, image=None):
+        if image == None:
+            image = self.get_screenshot()
+        return image[(coords[0], coords[1])] == (238, 238, 238)
+
     def wait_for_cross(self, cross):
-        while check_cross(cross):
+        while self.check_cross(cross):
             if check_break():
                 break
-
-    def check_cross(self, coords):
-        return self.check_coords(coords[0], coords[1]) == (238, 238, 238)
 
     def drag_from(self, coords_1, coords_2, waiting_time=0):
         """
@@ -112,7 +122,10 @@ class Tasks:
         pyautogui.move(x_diff, y_diff, time)
         pyautogui.mouseUp()
 
-    def get_wire_color(self, x, y):
+    def get_wire_color(self, x, y, picture = None):
+        if picture == None:
+            image = ImageGrab(0, 0, 1366, 768)
+            # print(image)
         r, g, b = self.check_coords(x, y)
         if r > 250 and g < 10 and b < 1:
             return "red"
@@ -124,48 +137,43 @@ class Tasks:
             return "purple"
         return "yo wtf"
 
-    def check_coords(self, x=None, y=None):
-        hdc = windll.user32.GetDC(0)
-        pixel = windll.gdi32.GetPixel(hdc, x, y)
-        #pixel = windll.gdi32.GetPixel(hdc, 684, 560)
-        i_colour = int(pixel)
-        r = (i_colour & 0xff)
-        g = ((i_colour >> 8) & 0xff)
-        b = ((i_colour >> 16) & 0xff)
-        return (r, g, b)
-
     def check_simon_lights(self):
         lights = [(340 + i*60, 225) for i in range(5)]
         count = 0
+        
         while count < 1:
             if check_break():
                 break
+            image = self.get_screenshot()
             for i, light in enumerate(lights):
-                if self.check_coords(light[0], light[1])[1] > 150:
-                    print(f"{i}: on")
+                if image[(light[0], light[1])][1] > 150:
+                    # print(f"{i}: on")
                     count += 1
                 else:
-                    print(f"{i}: off")
+                    pass
+                    # print(f"{i}: off")
         return count
 
-    def get_square_value(self, coords):
-        if self.check_coords(coords[0] + 12, coords[1] + 41)[0] < 70:
+    def get_square_value(self, coords, image=None):
+        if image == None:
+            image = self.get_screenshot()
+        if image[(coords[0] + 12, coords[1] + 41)][0] < 70:
             return 1
-        if self.check_coords(coords[0] + 13, coords[1] + 35)[0] < 70:
+        if image[(coords[0] + 13, coords[1] + 35)][0] < 70:
             return 2
-        if self.check_coords(coords[0] + 19, coords[1] + 40)[0] < 70:
+        if image[(coords[0] + 19, coords[1] + 40)][0] < 70:
             return 4
-        if self.check_coords(coords[0] + 7, coords[1] + 20)[0] < 70:
+        if image[(coords[0] + 7, coords[1] + 20)][0] < 70:
             return 5
-        if self.check_coords(coords[0] + 26, coords[1] + 24)[0] < 70:
+        if image[(coords[0] + 26, coords[1] + 24)][0] < 70:
             return 6
-        if self.check_coords(coords[0] + 15, coords[1] + 36)[0] < 70:
+        if image[(coords[0] + 15, coords[1] + 36)][0] < 70:
             return 7
-        if self.check_coords(coords[0] + 23, coords[1] + 26)[0] < 70:
+        if image[(coords[0] + 23, coords[1] + 26)][0] < 70:
             return 8
-        if self.check_coords(coords[0] + 26, coords[1] + 15)[0] < 70:
+        if image[(coords[0] + 26, coords[1] + 15)][0] < 70:
             return 9
-        if self.check_coords(coords[0] + 10, coords[1] + 13)[0] < 70:
+        if image[(coords[0] + 10, coords[1] + 13)][0] < 70:
             return 10
         return 3
 
@@ -178,17 +186,17 @@ class Tasks:
 
     def start_task(self):
         pyautogui.click(10, 10)
-        print("START!")
+        # print("START!")
         pyautogui.click(self.use_button)
         wait_seconds(0.5)
 
     def do_task(self, task_to_do):
-        print(f"Doing {task_to_do}.")
+        # print(f"Doing {task_to_do}.")
         task = self.tasks[task_to_do]
         if task[2]:
             self.start_task()
         task[0]()
-        print("Done!")
+        # print("Done!")
         if task[2]:
             wait_seconds(2)
 
@@ -198,10 +206,11 @@ class Tasks:
         center = (884, 384)
         align_parabola_constant = 0.0008
         range_of_align_up_and_down_values = range(-277, 277, 20)
+        image = self.get_screenshot()
         for x in range_of_align_up_and_down_values:
             y = int(align_parabola_constant * x ** 2)
             actual_coords = (center[0] + y, center[1] + x)
-            r, g, b = self.check_coords(actual_coords[0], actual_coords[1])
+            r, g, b = image[(actual_coords[0], actual_coords[1])]
             if max(r, g, b) > 70:
                 self.drag_from(actual_coords, center)
                 break
@@ -222,20 +231,23 @@ class Tasks:
                 pyautogui.click(coord_x, coord_y)
 
     def calibrate_distributor(self):
-        while self.check_coords(875, 170) == (0, 0, 0):
+        image = self.get_screenshot()
+        while image[(875, 170)] == (0, 0, 0):
             if check_break():
                 return
-            continue
+            image = self.get_screenshot()
+            
         pyautogui.click(875, 220)
-        while self.check_coords(875, 350) == (0, 0, 0):
+        while image[(875, 350)] == (0, 0, 0):
             if check_break():
                 return
-            continue
+            image = self.get_screenshot()
+            
         pyautogui.click(875, 420)
-        while self.check_coords(875, 540) == (0, 0, 0):
+        while image[(875, 540)] == (0, 0, 0):
             if check_break():
                 return
-            continue
+            image = self.get_screenshot()
         pyautogui.click(875, 600)
 
     def card(self):
@@ -250,15 +262,16 @@ class Tasks:
     def center_click(self):
         pyautogui.click(683, 383)
 
+    # ToDo
     def course(self):
         raise NotImplementedError
 
     def divert_1(self):
         switches_x = [443, 510, 578, 648, 717, 784, 854, 923]
         switches_y = 560
-
+        image = self.get_screenshot()
         for x in switches_x:
-            if self.check_coords(x, switches_y)[0] > 100:
+            if image[(x, switches_y)][0] > 100:
                 self.drag_from((x, switches_y), (x, 400))
 
     def download_upload(self):
@@ -273,8 +286,6 @@ class Tasks:
         pyautogui.mouseUp()
 
     def leaves(self):
-        false = [(140, 166, 214), (207, 233, 247)]
-        positive = [(198, 146, 66), (71, 77, 19)]
         steps = 50
         field_x = range(496, 996, steps)
         field_y = range(70, 697, steps)
@@ -284,27 +295,30 @@ class Tasks:
         while self.check_cross(cross):
             if check_break():
                 break
+            image = self.get_screenshot()
             for x in field_x:
-                if check_break() or not self.check_cross(cross):
+                if check_break() or not self.check_cross(cross, image):
                     break
                 for y in field_y:
-                    if check_break() or not self.check_cross(cross):
+                    if check_break() or not self.check_cross(cross, image):
                         break
-                    if self.check_coords(x, y)[2] < 150:
+                    if image[(x, y)][2] < 150:
                         self.drag_from((x, y), finish)
 
-        print("Finished leaves!")
+        # print("Finished leaves!")
 
+    # ToDo
     def manifolds(self):
         x_diff = 109
         y_diff = 111
+        image = self.get_screenshot()
         squares = []
         for y in range(2):
             y_coord = 304 + y*y_diff
             for x in range(5):
                 x_coord = 447 + x*x_diff
-                squares.append(self.get_square_value((x_coord, y_coord)))
-        print(squares)
+                squares.append(self.get_square_value((x_coord, y_coord, image)))
+        # print(squares)
         for i in range(1, 11):
             square_to_press = squares.index(i)
             pyautogui.click(447+(square_to_press % 5)*x_diff,
@@ -313,12 +327,13 @@ class Tasks:
     def sample(self):
         pyautogui.click(900, 670)
         wait_seconds(62)
+        image = self.get_screenshot()
         for i in range(5):
             x = 520 + 80 * i
             button_y = 600
             liquid_y = 420
-            print(self.check_coords(x, liquid_y))
-            if self.check_coords(x, liquid_y) == (246, 134, 134):
+            # print(self.check_coords(x, liquid_y))
+            if image[(x, liquid_y)] == (246, 134, 134):
                 pyautogui.click(x, button_y)
                 break
 
@@ -336,8 +351,9 @@ class Tasks:
             (758, 319),  # 244, 17, 20
             (740, 318)  # 241, 21, 26
         ]
+        image = self.get_screenshot()
         for coord in coords:
-            g = self.check_coords(coord[0], coord[1])[1]
+            g = image[(coord[0], coord[1])][1]
             if g < 50:
                 pyautogui.click(coord)
 
@@ -351,22 +367,24 @@ class Tasks:
                 buttons.append((column, row))
         i = self.check_simon_lights()
         while i < 6:
-            print(i)
+            # print(i)
             order_to_press = []
             while len(order_to_press) < i:
                 for j, light in enumerate(lights):
                     if check_break():
                         return
-                    if self.check_coords(light[0], light[1]) != (0, 0, 0):
+                    image = self.get_screenshot()
+                    if image[(light[0], light[1])] != (0, 0, 0):
                         order_to_press.append(buttons[j])
                         wait_seconds(0.2)
-            print([buttons.index(element) for element in order_to_press])
+            # print([buttons.index(element) for element in order_to_press])
             wait_seconds(0.5)
             for button in order_to_press:
                 if check_break():
                     return
                 pyautogui.click(button)
-                if self.check_coords(button[0], button[1]) == (189, 43, 0):
+                image = self.get_screenshot()
+                if image[(button[0], button[1])] == (189, 43, 0):
                     i = 0
             i += 1
 
@@ -389,10 +407,11 @@ class Tasks:
     def wires(self):
         x = [400, 940]
         y = [193, 326, 458, 590]
+        image = self.get_screenshot()
         for i in range(4):
-            wire_color = self.check_coords(x[0], y[i])
+            wire_color = image[(x[0], y[i])]
             for j in range(4):
-                other_wire = self.check_coords(x[1], y[j])
+                other_wire = image[(x[1], y[j])]
                 if wire_color == other_wire:
                     self.drag_from((x[0], y[i]), (x[1], y[j]))
                     break
@@ -400,7 +419,7 @@ class Tasks:
     def kill(self):
         self.toggle_kill()
         while self.kill_status:
-            print("kill")
+            # print("kill")
             keyboard.press_and_release("q")
             if check_break():
                 self.kill_status = False
@@ -425,13 +444,13 @@ class Data:
         self.current_pack = 0
 
     def read_data_from_file(self):
-        print("Reading data from file.")
+        # print("Reading data from file.")
         try:
             with open("data.json", encoding='utf-8') as file:
-                print('"data.json" exists, woo.')
+                # print('"data.json" exists, woo.')
                 return json.loads(file.read())
         except Exception:
-            print("File is missing, loading base stuff.")
+            # print("File is missing, loading base stuff.")
             with open("data.json", "w", encoding='utf-8'):
                 return {
                     "coords": [[330, 320], [680, 650], [680, 550], [860, 650]],
@@ -442,24 +461,25 @@ class Data:
                 }
 
     def write_data_to_file(self):
-        print("Update the data file")
+        # print("Update the data file")
         with open("data.json", "w", encoding='utf-8') as file:
             json.dump(self.data, file)
 
     def add_sentence(self, program, pack_to_add, textboxes):
-        print(f"Add another sentence to {pack_to_add}")
+        # print(f"Add another sentence to {pack_to_add}")
         self.save(pack_to_add, [el.get() for el in textboxes])
         self.sentences[int(pack_to_add)][1].append("")
         program.draw()
 
     def remove_sentence(self, program, pack_to_remove, textboxes):
-        print(f"Remove a sentence from {pack_to_remove}")
+        # print(f"Remove a sentence from {pack_to_remove}")
         self.save(pack_to_remove, [el.get() for el in textboxes])
         if len(self.get_sentences_pack(pack_to_remove)) > 1:
-            print("    More than 1 sentence, can do")
+            # print("    More than 1 sentence, can do")
             self.save(pack_to_remove, [el.get() for el in textboxes[:-1]])
         else:
-            print("    But I don't have enough sentences...")
+            pass
+            # print("    But I don't have enough sentences...")
         program.draw()
 
     def add_sentence_pack(self):
@@ -473,7 +493,7 @@ class Data:
         self.current_pack = max(len(self.sentences)-1, 0)
 
     def get_sentences_pack(self, pack_to_get):
-        print(f"Get sentences for {pack_to_get}")
+        # print(f"Get sentences for {pack_to_get}")
         return self.sentences[pack_to_get][1]
 
     def set_next_pack(self):
@@ -491,60 +511,59 @@ class Data:
         return self.data["coords"][0]
 
     def get_textbox_1_coords(self):
-        print("Get coords for textbox")
+        # print("Get coords for textbox")
         return self.data["coords"][1]
 
     def get_textbox_2_coords(self):
-        print("Get coords for textbox")
+        # print("Get coords for textbox")
         return self.data["coords"][2]
 
     def get_arrow_coords(self):
-        print("Get coords for arrow")
+        # print("Get coords for arrow")
         return self.data["coords"][3]
 
     def get_current_pack(self):
-        print("Get currently used sentence pack.")
+        # print("Get currently used sentence pack.")
         return self.current_pack
 
     def set_current_pack(self, new_pack, event=None):
-        print(f"Set current map to {new_pack}")
+        # print(f"Set current map to {new_pack}")
         self.current_pack = int(new_pack)
 
     def rename_current_pack(self, new_name):
-        print(f"Renaming pack {self.current_pack} to {new_name}.")
+        # print(f"Renaming pack {self.current_pack} to {new_name}.")
         self.sentences[self.current_pack][0] = new_name
 
     def get_cooldown(self):
-        print("Get current cooldown for chat")
+        # print("Get current cooldown for chat")
         try:
             return self.data["cooldowns"][0]
         except Exception:
-            print("    Oh f...the cooldowns missing from data_file, let's add it to it.")
+            # print("    Oh f...the cooldowns missing from data_file, let's add it to it.")
             self.data["cooldowns"] = [3.0, 0.2]
             return self.data["cooldowns"][0]
 
     def set_cooldown(self, cooldown):
-        print(f"Set chat cooldown to {cooldown}")
+        # print(f"Set chat cooldown to {cooldown}")
         self.data["cooldowns"][0] = float(cooldown)
         self.write_data_to_file()
 
     def get_enter_cooldown(self):
-        print("Get cooldown for pressing enter after writing.")
+        # print("Get cooldown for pressing enter after writing.")
         try:
             return self.data["cooldowns"][1]
         except Exception:
-            print(
-                "    Oh f...the cooldowns are missing from data file, let's add it to it.")
+            # print("    Oh f...the cooldowns are missing from data file, let's add it to it.")
             self.data["cooldowns"] = [3.0, 0.2]
             return self.data["cooldowns"][1]
 
     def set_enter_cooldown(self, cooldown):
-        print("Setting enter cooldown to ", cooldown)
+        # print("Setting enter cooldown to ", cooldown)
         self.data["cooldowns"][1] = float(cooldown)
         self.write_data_to_file()
 
     def save(self, map_to_save, sentences):
-        print(f"Save the sentences for {map_to_save}")
+        # print(f"Save the sentences for {map_to_save}")
         self.sentences[int(map_to_save)][1] = sentences
         self.write_data_to_file()
 
@@ -552,59 +571,59 @@ class Data:
         sentences = [el.get() for el in textboxes]
         cooldowns = (self.get_cooldown(), self.get_enter_cooldown())
         self.save(current_pack, sentences)
-        print("The sentences are:")
-        print(*sentences, sep="\n")
+        # print("The sentences are:")
+        # print(*sentences, sep="\n")
         for index, sentence in enumerate(sentences):
             wait_seconds(cooldowns[0])
             if check_break():
-                print("Shift was pressed, stooooop!")
+                # print("Shift was pressed, stooooop!")
                 break
-            print("Writing:", sentence)
+            # print("Writing:", sentence)
             keyboard.write(sentence)
             wait_seconds(cooldowns[1])
-            print("SEND IT!")
+            # print("SEND IT!")
             keyboard.send('enter')
 
     def rejoin(self, window, code):
         self.rejoin_code = code[0].get().upper()
-        print("Rejoin code is: ", self.rejoin_code)
+        # print("Rejoin code is: ", self.rejoin_code)
         while True:
             wait_seconds(2)
             if check_break():
-                print("Shift was pressed, stop it!")
+                # print("Shift was pressed, stop it!")
                 break
-            print("Click cross")
+            # print("Click cross")
             pyautogui.click(self.data["coords"][0])
             time.sleep(0.2)
-            print("Click textbox 1")
+            # print("Click textbox 1")
             pyautogui.click(self.data["coords"][1])
             time.sleep(0.2)
-            print("Click textbox 2")
+            # print("Click textbox 2")
             pyautogui.click(self.data["coords"][2])
             time.sleep(0.2)
-            print("Write the code")
+            # print("Write the code")
             pyautogui.write(self.rejoin_code)
-            print("Press the arrow")
+            # print("Press the arrow")
             pyautogui.click(self.data["coords"][3])
 
     def set_cross(self, coords):
         if len(coords) == 2:
-            print(f"Set cross coords to {coords}")
+            # print(f"Set cross coords to {coords}")
             self.data["coords"][0] = coords
 
     def set_textbox_1(self, coords):
         if len(coords) == 2:
-            print(f"Set textbox coords to {coords}")
+            # print(f"Set textbox coords to {coords}")
             self.data["coords"][1] = coords
 
     def set_textbox_2(self, coords):
         if len(coords) == 2:
-            print(f"Set textbox coords to {coords}")
+            # print(f"Set textbox coords to {coords}")
             self.data["coords"][2] = coords
 
     def set_arrow(self, coords):
         if len(coords) == 2:
-            print(f"Set arrow coords to {coords}")
+            # print(f"Set arrow coords to {coords}")
             self.data["coords"][3] = coords
 
 
@@ -627,7 +646,8 @@ class Program:
             self.window.wm_iconbitmap("icon.ico")
             os.remove(tempFile)
         except Exception:
-            print("Icon failed")
+            pass
+            # print("Icon failed")
         self.states = [State.MENU]
         self.draw()
 
@@ -703,10 +723,9 @@ class Program:
                              arrowsize=17)
 
     def add_header(self, title):
-        print("Adding header")
+        # print("Adding header")
         if len(self.get_all_states()) > 1:
-            print(
-                "The states list is longer than 1, so I could go back...add Back button")
+            # print("The states list is longer than 1, so I could go back...add Back button")
             ttk.Button(self.window, text="Back", style="Normal.TButton", command=lambda: self.set_all_states(self.get_all_states()[:-1])).grid(
                 row=0, column=0, sticky="NESW")
         else:
@@ -715,13 +734,13 @@ class Program:
             ttk.Button(self.window, text="About", style="Normal.TButton", command=lambda: self.set_state(
                 State.ABOUT)).grid(row=0, column=0, sticky="NESW")
 
-        print(f"The title is '{title}'")
+        # print(f"The title is '{title}'")
         ttk.Label(self.window, style="Header.TLabel", text=title.upper(), anchor="center").grid(
             row=0, column=1, columnspan=2, rowspan=2, sticky="NESW")
         ttk.Label(self.window, style="Borderless.TLabel",
                   text="l").grid(row=1, column=0, sticky="NEWS")
         if self.get_current_state() not in [State.SETTINGS, State.MENU]:
-            print("It's not Settings nor menu, so let's add Settings button, too")
+            # print("It's not Settings nor menu, so let's add Settings button, too")
             ttk.Button(self.window, text="Settings", style="Normal.TButton", command=lambda: self.set_state(State.SETTINGS)).grid(
                 row=0, column=3, sticky="NESW")
 
@@ -733,12 +752,12 @@ class Program:
                 row=from_row + (i // columns), column=(i*columnspan) % (columns*columnspan), sticky="NESW", columnspan=columnspan)
 
     def clear_window(self):
-        print("Let's clear everything")
+        # print("Let's clear everything")
         for el in self.window.winfo_children():
             el.destroy()
 
     def get_all_states(self):
-        print("Current states list is:", self.states)
+        # print("Current states list is:", self.states)
         return self.states
 
     def get_current_state(self):
@@ -748,7 +767,8 @@ class Program:
         new_coords = get_coordinates()
         type_definitions = [
             ("cross", lambda c=new_coords: self.data.set_cross(c)),
-            ("textbox", lambda c=new_coords: self.data.set_textbox(c)),
+            ("textbox", lambda c=new_coords: self.data.set_textbox_1(c)),
+            ("textbox_2", lambda c=new_coords: self.data.set_textbox_2(c)),
             ("arrow", lambda c=new_coords: self.data.set_arrow(c))]
         type_definitions[type][1]()
         self.draw()
@@ -764,21 +784,24 @@ class Program:
         self.data.set_textbox_1(coordinates[2:4])
         self.data.set_textbox_2(coordinates[4:6])
         self.data.set_arrow(coordinates[6:8])
+        self.data.set_cooldown(cds[0])
+        self.data.set_enter_cooldown(cds[1])
         self.data.write_data_to_file()
 
     def set_state(self, state: State):
-        print("Next state is", state)
+        # print("Next state is", state)
         self.states.append(state)
         self.draw()
 
     def go_back(self):
-        print("Let's go back")
+        # print("Let's go back")
         if len(self.get_all_states()) > 1:
-            print("It's longer than 1, so let's remove the last one")
+            # print("It's longer than 1, so let's remove the last one")
             self.states = self.states[:-1]
-            print("New current is ", self.states[-1])
+            # print("New current is ", self.states[-1])
         else:
-            print("Can't do, list isn't long enough :c")
+            pass
+            # print("Can't do, list isn't long enough :c")
 
     def draw_about(self):
         self.add_header("About")
@@ -882,8 +905,8 @@ class Program:
             "TEXTBOX 1": (lambda: self.get_new_coords(1), "Get coordinates"),
             "TEXTBOX 2": (lambda: self.get_new_coords(2), "Get coordinates"),
             "ARROW": (lambda: self.get_new_coords(3), "Get coordinates"),
-            "CHAT COOLDOWN": (lambda x: print("Cooldown"), "Set cooldown"),
-            "ENTER COOLDOWN": (lambda x: print("Enter"), "Set enter cooldown")
+            "CHAT COOLDOWN": None,
+            "ENTER COOLDOWN": None
         }
         origin_x, origin_y = 2, 0
         cross = self.data.get_cross_coords()
@@ -933,14 +956,12 @@ class Program:
                 cooldowns.append(spinbox)
                 if data_element == "CHAT COOLDOWN":
                     spinbox.insert(0, self.data.get_cooldown())
-                    ttk.Button(self.window, text=buttons[data_element][1], style="Normal.TButton", command=lambda c=cooldowns: self.data.set_cooldown(cooldowns[0].get())).grid(
-                        row=origin_x + j + 1, column=origin_y + 3, sticky="NESW")
+                    
                 if data_element == "ENTER COOLDOWN":
                     spinbox.insert(0, self.data.get_enter_cooldown())
-                    ttk.Button(self.window, text=buttons[data_element][1], style="Normal.TButton", command=lambda c=cooldowns: self.data.set_enter_cooldown(cooldowns[1].get())).grid(
-                        row=origin_x + j + 1, column=origin_y + 3, sticky="NESW")
+                    
                 spinbox.grid(row=origin_x + j+1, column=origin_y + 1,
-                             padx=1, pady=1, columnspan=2, sticky="NEWS")
+                             padx=1, pady=1, columnspan=3, sticky="NEWS")
 
     def draw_tasks(self):
         self.add_header("Tasks")
@@ -962,7 +983,7 @@ class Program:
         current = self.get_current_state()
         for j in range(4):
             self.window.columnconfigure(j, weight=1, uniform='fourth')
-        print("Current state is", current)
+        # print("Current state is", current)
         self.clear_window()
         drawable_states = {
             State.MENU: lambda: self.draw_menu(),
