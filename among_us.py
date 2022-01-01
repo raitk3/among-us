@@ -1,15 +1,14 @@
 import tkinter as tk
 import json
-import keyboard
 import time
-import numpy as np
 import base64
 import os
-import pyautogui
 from tkinter import ttk
 from PIL import ImageGrab
-from pynput import mouse
+from pynput import mouse, keyboard
 from enum import Enum, auto
+
+import keyboard as kbd
 
 # VERSION_NUMBER = "3 Alpha"
 VERSION_NUMBER = str(time.strftime("%y%m%d"))
@@ -19,12 +18,18 @@ DISPLAY_X = 1366
 DISPLAY_Y = 768
 
 
-def wait_seconds(seconds: float):
+
+def check_break(kb=None):
+    if kb == None:
+        kb = keyboard.Controller()
+    return kbd.is_pressed("shift") or kbd.is_pressed("Esc")
+    #return False
+
+def wait_seconds(seconds: float, kb=None):
     time_start = time.time()
     while (time.time() - time_start < seconds):
-        if keyboard.is_pressed('shift'):
+        if check_break(kb):
             break
-
 
 def get_coordinates():
     with mouse.Events() as events:
@@ -37,10 +42,19 @@ def get_coordinates():
                     return []
                 pass
 
+def click(coords, m=None):
+    m = m if m != None else mouse.Controller()
+    m.position = coords
+    m.click(mouse.Button.left)
+    wait_seconds(0.2)
 
-def check_break():
-    return keyboard.is_pressed("shift") or keyboard.is_pressed("Esc")
+def write(text, kb=None):
+    kb = kb if kb != None else keyboard.Controller()
+    kb.type(text)
 
+def key_press(button, kb=None):
+    kb = kb if kb != None else keyboard.Controller()
+    kb.tap(button)
 
 class Map:
     def __init__(self):
@@ -53,6 +67,9 @@ class Tasks:
     def __init__(self, program):
         self.use_button = (1260, 660)
         self.program = program
+        self.mouse = self.program.mouse
+        self.keyboard = self.program.keyboard
+        self.mouse = self.program.mouse
         self.kill_status = False
         self.tasks = {
             "Align": (lambda: self.align(), True, True),
@@ -100,31 +117,36 @@ class Tasks:
         Make use of pyautogui.drag()
         - Not useful
         """
+        time_to_wait_between_actions = 0.1
+        self.mouse.position = (coords_1)
+        if check_break(self.keyboard):
+            return
+        self.mouse.press(mouse.Button.left)
+        wait_seconds(time_to_wait_between_actions)
+        if check_break(self.keyboard):
+            return
+        self.mouse.position = (coords_2)
+        if check_break(self.keyboard):
+            self.mouse.release(mouse.Button.left)
+            return
+        wait_seconds(waiting_time + time_to_wait_between_actions)
+        self.mouse.release(mouse.Button.left)
+        wait_seconds(time_to_wait_between_actions)
 
-        pyautogui.moveTo(coords_1)
-        if check_break():
-            return
-        pyautogui.mouseDown()
-        if check_break():
-            return
-        pyautogui.moveTo(coords_2)
-        if check_break():
-            pyautogui.mouseUp()
-            return
-        wait_seconds(waiting_time)
-        pyautogui.mouseUp()
-
-    def drag_slowly(self, coords_1, coords_2, time):
+    def drag_slowly(self, coords_1, coords_2, steps):
         x_diff = (coords_2[0] - coords_1[0])
         y_diff = (coords_2[1] - coords_1[1])
-        pyautogui.moveTo(coords_1)
-        pyautogui.mouseDown()
-        pyautogui.move(x_diff, y_diff, time)
-        pyautogui.mouseUp()
+        self.mouse.position = (coords_1)
+        self.mouse.press(mouse.Button.left)
+        for _ in range(steps):
+            self.mouse.move(x_diff//steps, y_diff//steps)
+            wait_seconds(0.5 / steps)
+        self.mouse.release(mouse.Button.left)
 
     def get_wire_color(self, x, y, picture = None):
         if picture == None:
             image = ImageGrab(0, 0, 1366, 768)
+            picture = image.get()
             # print(image)
         r, g, b = self.check_coords(x, y)
         if r > 250 and g < 10 and b < 1:
@@ -179,15 +201,16 @@ class Tasks:
 
     def toggle_kill(self):
         self.kill_status = not self.kill_status
+    
     #####CYCLE#####
 
     def move(self):
         raise NotImplementedError
 
     def start_task(self):
-        pyautogui.click(10, 10)
+        click((10, 10), self.mouse)
         # print("START!")
-        pyautogui.click(self.use_button)
+        click(self.use_button, self.mouse)
         wait_seconds(0.5)
 
     def do_task(self, task_to_do):
@@ -214,21 +237,24 @@ class Tasks:
             if max(r, g, b) > 70:
                 self.drag_from(actual_coords, center)
                 break
-            if check_break():
+            if check_break(self.keyboard):
                 break
 
     def asteroids(self):
         cross = (340, 92)
-        origin = (500, 200)
-        size = 396
-        step = 10
+        origin = (400, 100)
+        size = 500
+        steps = 15
         while self.check_cross(cross):
-            for y in range(0, size+1, step):
-                coord_x, coord_y = origin[0]+size, origin[1]+y
-                if check_break():
-                    return
-                # pyautogui.moveTo(coord_x, coord_y)
-                pyautogui.click(coord_x, coord_y)
+            image = self.get_screenshot()
+            for x in range(0, steps):
+                for y in range(0, steps):
+                    coord_x, coord_y = origin[0]+(size / steps * x), origin[1]+(size / steps * y)
+                    if check_break():
+                        return
+                    # pyautogui.moveTo(coord_x, coord_y)
+                    if image[(coord_x, coord_y)][1] < 65:
+                        click((coord_x, coord_y), self.mouse)
 
     def calibrate_distributor(self):
         image = self.get_screenshot()
@@ -237,30 +263,30 @@ class Tasks:
                 return
             image = self.get_screenshot()
             
-        pyautogui.click(875, 220)
+        click((875, 220), self.mouse)
         while image[(875, 350)] == (0, 0, 0):
             if check_break():
                 return
             image = self.get_screenshot()
             
-        pyautogui.click(875, 420)
+        click((875, 420), self.mouse)
         while image[(875, 540)] == (0, 0, 0):
             if check_break():
                 return
             image = self.get_screenshot()
-        pyautogui.click(875, 600)
+        click((875, 600), self.mouse)
 
     def card(self):
-        pyautogui.click(580, 580)
+        click((580, 580), self.mouse)
         wait_seconds(1)
 
         if check_break():
             return
-        self.drag_slowly((370, 300), (1030, 300), 1.05)
-        pyautogui.mouseUp()
+        self.drag_slowly((370, 300), (1030, 300), 30)
+        self.mouse.release(mouse.Button.left)
 
     def center_click(self):
-        pyautogui.click(683, 383)
+        click((DISPLAY_X // 2, DISPLAY_Y //2 ), self.mouse)
 
     # ToDo
     def course(self):
@@ -276,14 +302,14 @@ class Tasks:
 
     def download_upload(self):
         cross = (238, 169)
-        pyautogui.click(680, 470)
+        click((680, 470), self.mouse)
         self.wait_for_cross(cross)
 
     def fuel(self):
-        pyautogui.moveTo(1040, 620)
-        pyautogui.mouseDown()
+        self.mouse.position = (1040, 620)
+        self.mouse.press(mouse.Button.left)
         wait_seconds(4)
-        pyautogui.mouseUp()
+        self.mouse.release(mouse.Button.left)
 
     def leaves(self):
         steps = 50
@@ -300,7 +326,7 @@ class Tasks:
                 if check_break() or not self.check_cross(cross, image):
                     break
                 for y in field_y:
-                    if check_break() or not self.check_cross(cross, image):
+                    if check_break(self.keyboard) or not self.check_cross(cross, image):
                         break
                     if image[(x, y)][2] < 150:
                         self.drag_from((x, y), finish)
@@ -321,11 +347,11 @@ class Tasks:
         # print(squares)
         for i in range(1, 11):
             square_to_press = squares.index(i)
-            pyautogui.click(447+(square_to_press % 5)*x_diff,
-                            304+(square_to_press // 5)*y_diff)
+            click((447+(square_to_press % 5)*x_diff,
+                            304+(square_to_press // 5)*y_diff), self.mouse)
 
     def sample(self):
-        pyautogui.click(900, 670)
+        click((900, 670), self.mouse)
         wait_seconds(62)
         image = self.get_screenshot()
         for i in range(5):
@@ -334,7 +360,7 @@ class Tasks:
             liquid_y = 420
             # print(self.check_coords(x, liquid_y))
             if image[(x, liquid_y)] == (246, 134, 134):
-                pyautogui.click(x, button_y)
+                click((x, button_y), self.mouse)
                 break
 
     def scan(self):
@@ -355,7 +381,7 @@ class Tasks:
         for coord in coords:
             g = image[(coord[0], coord[1])][1]
             if g < 50:
-                pyautogui.click(coord)
+                click((coord), self.mouse)
 
     def simon_says(self):
         lights = []
@@ -366,23 +392,25 @@ class Tasks:
             for column in range(810, 991, 90):
                 buttons.append((column, row))
         i = self.check_simon_lights()
+        print(i)
         while i < 6:
             # print(i)
             order_to_press = []
             while len(order_to_press) < i:
+                image = self.get_screenshot()
                 for j, light in enumerate(lights):
                     if check_break():
                         return
-                    image = self.get_screenshot()
                     if image[(light[0], light[1])] != (0, 0, 0):
                         order_to_press.append(buttons[j])
                         wait_seconds(0.2)
+                print(order_to_press)
             # print([buttons.index(element) for element in order_to_press])
             wait_seconds(0.5)
             for button in order_to_press:
                 if check_break():
                     return
-                pyautogui.click(button)
+                click(button, self.mouse)
                 image = self.get_screenshot()
                 if image[(button[0], button[1])] == (189, 43, 0):
                     i = 0
@@ -400,7 +428,7 @@ class Tasks:
         for x in range(origin[0], origin[0] + size[0] + 1, step):
             for y in range(origin[1], origin[1] + size[1] + 1, step):
                 if self.check_cross(cross) and not check_break():
-                    pyautogui.click(x, y)
+                    click((x, y), self.mouse)
                 else:
                     return
 
@@ -420,7 +448,7 @@ class Tasks:
         self.toggle_kill()
         while self.kill_status:
             # print("kill")
-            keyboard.press_and_release("q")
+            key_press("q")
             if check_break():
                 self.kill_status = False
             wait_seconds(0.1)
@@ -437,10 +465,12 @@ class State(Enum):
 
 
 class Data:
-    def __init__(self):
+    def __init__(self, m=None, kb=None):
         self.rejoin_code = ""
         self.data = self.read_data_from_file()
         self.sentences = self.data["sentences"]
+        self.keyboard = kb if kb != None else keyboard.Controller()
+        self.mouse = m if m != None else mouse.Controller()
         self.current_pack = 0
 
     def read_data_from_file(self):
@@ -573,16 +603,16 @@ class Data:
         self.save(current_pack, sentences)
         # print("The sentences are:")
         # print(*sentences, sep="\n")
-        for index, sentence in enumerate(sentences):
+        for sentence in sentences:
             wait_seconds(cooldowns[0])
             if check_break():
                 # print("Shift was pressed, stooooop!")
                 break
             # print("Writing:", sentence)
-            keyboard.write(sentence)
+            write(sentence, self.keyboard)
             wait_seconds(cooldowns[1])
             # print("SEND IT!")
-            keyboard.send('enter')
+            key_press(keyboard.Key.enter, self.keyboard)
 
     def rejoin(self, window, code):
         self.rejoin_code = code[0].get().upper()
@@ -593,18 +623,18 @@ class Data:
                 # print("Shift was pressed, stop it!")
                 break
             # print("Click cross")
-            pyautogui.click(self.data["coords"][0])
-            time.sleep(0.2)
+            click(self.data["coords"][0], self.mouse)
+            wait_seconds(0.2)
             # print("Click textbox 1")
-            pyautogui.click(self.data["coords"][1])
-            time.sleep(0.2)
+            click(self.data["coords"][1], self.mouse)
+            wait_seconds(0.2)
             # print("Click textbox 2")
-            pyautogui.click(self.data["coords"][2])
-            time.sleep(0.2)
+            click(self.data["coords"][2], self.mouse)
+            wait_seconds(0.2)
             # print("Write the code")
-            pyautogui.write(self.rejoin_code)
+            write(self.rejoin_code, self.keyboard)
             # print("Press the arrow")
-            pyautogui.click(self.data["coords"][3])
+            click(self.data["coords"][3], self.mouse)
 
     def set_cross(self, coords):
         if len(coords) == 2:
@@ -630,6 +660,8 @@ class Data:
 class Program:
     def __init__(self, title):
         self.data = Data()
+        self.keyboard = keyboard.Controller()
+        self.mouse = mouse.Controller()
         self.tasks = Tasks(self)
         self.window = tk.Tk()
         self.style = ttk.Style()
