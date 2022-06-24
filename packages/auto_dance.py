@@ -1,0 +1,37 @@
+import pyautogui
+import keyboard
+import time
+import random
+
+CODE = "ZZXUOF"
+CROSS = (330, 320)
+TEXTBOX = (680, 700)
+ARROW = (860, 700)
+
+
+def dance():
+    letter = random.choice("wasd")
+    for _ in range(5):
+        pyautogui.press(letter)
+    
+
+
+def cycle():
+    running = True
+    while True:
+        try:
+            if running:
+                dance()
+            if running and keyboard.is_pressed('z'):
+                print("Pause")
+                running = False
+            if not running and keyboard.is_pressed('x'):
+                print("Continue")
+                running = True
+        except KeyboardInterrupt:
+            print("Ok, done!")
+            break
+
+
+if __name__ == '__main__':
+    cycle()

@@ -11,7 +11,7 @@ def wait_seconds(seconds: float):
 
 def read():
     list_of_strings = []
-    with open("sentences.txt", encoding="utf-8") as file:
+    with open("sentences.txt") as file:
         for line in file.readlines():
             list_of_strings.append(line.strip())
     return list_of_strings

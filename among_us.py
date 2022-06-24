@@ -14,16 +14,14 @@ import keyboard as kbd
 VERSION_NUMBER = str(time.strftime("%y%m%d"))
 # VERSION_NUMBER = "211204"
 VERSION = "ALPHA"
-DISPLAY_X = 1366
-DISPLAY_Y = 768
-
 
 
 def check_break(kb=None):
     if kb == None:
         kb = keyboard.Controller()
     return kbd.is_pressed("shift") or kbd.is_pressed("Esc")
-    #return False
+    # return False
+
 
 def wait_seconds(seconds: float, kb=None):
     time_start = time.time()
@@ -31,36 +29,33 @@ def wait_seconds(seconds: float, kb=None):
         if check_break(kb):
             break
 
-def get_coordinates():
-    with mouse.Events() as events:
-        for event in events:
-            try:
-                if event.button == mouse.Button.left:
-                    return [event.x, event.y]
-            except Exception:
-                if check_break():
-                    return []
-                pass
-
-def click(coords, m=None):
-    m = m if m != None else mouse.Controller()
-    m.position = coords
-    m.click(mouse.Button.left)
-    wait_seconds(0.2)
 
 def write(text, kb=None):
     kb = kb if kb != None else keyboard.Controller()
     kb.type(text)
 
+
 def key_press(button, kb=None):
     kb = kb if kb != None else keyboard.Controller()
     kb.tap(button)
 
-class Map:
-    def __init__(self):
-        self.nodes = {
 
-        }
+class State(Enum):
+    MENU = auto()
+    JOIN = auto()
+    SENTENCES = auto()
+    SETTINGS = auto()
+    TASKS = auto()
+    ABOUT = auto()
+
+
+class Coordinate(Enum):
+    CROSS = auto()
+    TB_1 = auto()
+    TB_2 = auto()
+    ARROW = auto()
+    ORIGIN = auto()
+    DISPLAY = auto()
 
 
 class Tasks:
@@ -75,7 +70,7 @@ class Tasks:
             "Align": (lambda: self.align(), True, True),
             "Asteroids": (lambda: self.asteroids(), True, True),
             "Calibrate distributor": (lambda: self.calibrate_distributor(), True, True),
-            "Chart course": (lambda: self.course(), False, True),
+            "Chart course": (lambda: self.course(), True, True),
             "Clean vent": (lambda: self.vent(), True, True),
             "Divert 1": (lambda: self.divert_1(), True, True),
             "Divert 2": (lambda: self.center_click(), True, True),
@@ -97,9 +92,10 @@ class Tasks:
     #####HELP######
 
     def get_screenshot(self):
-        image = ImageGrab.grab(bbox=(0, 0, 1366, 768))
-        pixels = image.load()
-        return pixels
+        return self.program.data.get_screenshot()
+
+    def click(self, coords):
+        self.program.data.click(coords, self.mouse)
 
     def check_cross(self, coords, image=None):
         if image == None:
@@ -118,14 +114,14 @@ class Tasks:
         - Not useful
         """
         time_to_wait_between_actions = 0.1
-        self.mouse.position = (coords_1)
+        self.mouse.position = self.program.data.correct_coords(coords_1)
         if check_break(self.keyboard):
             return
         self.mouse.press(mouse.Button.left)
         wait_seconds(time_to_wait_between_actions)
         if check_break(self.keyboard):
             return
-        self.mouse.position = (coords_2)
+        self.mouse.position = self.program.data.correct_coords(coords_2)
         if check_break(self.keyboard):
             self.mouse.release(mouse.Button.left)
             return
@@ -136,18 +132,16 @@ class Tasks:
     def drag_slowly(self, coords_1, coords_2, steps):
         x_diff = (coords_2[0] - coords_1[0])
         y_diff = (coords_2[1] - coords_1[1])
-        self.mouse.position = (coords_1)
+        self.mouse.position = self.program.data.correct_coords(coords_1)
         self.mouse.press(mouse.Button.left)
         for _ in range(steps):
             self.mouse.move(x_diff//steps, y_diff//steps)
             wait_seconds(0.5 / steps)
         self.mouse.release(mouse.Button.left)
 
-    def get_wire_color(self, x, y, picture = None):
+    def get_wire_color(self, x, y, picture=None):
         if picture == None:
-            image = ImageGrab(0, 0, 1366, 768)
-            picture = image.get()
-            # print(image)
+            picture = self.get_screenshot()
         r, g, b = self.check_coords(x, y)
         if r > 250 and g < 10 and b < 1:
             return "red"
@@ -162,7 +156,7 @@ class Tasks:
     def check_simon_lights(self):
         lights = [(340 + i*60, 225) for i in range(5)]
         count = 0
-        
+
         while count < 1:
             if check_break():
                 break
@@ -201,16 +195,12 @@ class Tasks:
 
     def toggle_kill(self):
         self.kill_status = not self.kill_status
-    
+
     #####CYCLE#####
 
-    def move(self):
-        raise NotImplementedError
-
     def start_task(self):
-        click((10, 10), self.mouse)
-        # print("START!")
-        click(self.use_button, self.mouse)
+        self.click((10, 10))
+        self.click(self.use_button)
         wait_seconds(0.5)
 
     def do_task(self, task_to_do):
@@ -249,35 +239,36 @@ class Tasks:
             image = self.get_screenshot()
             for x in range(0, steps):
                 for y in range(0, steps):
-                    coord_x, coord_y = origin[0]+(size / steps * x), origin[1]+(size / steps * y)
+                    coord_x, coord_y = origin[0] + \
+                        (size / steps * x), origin[1]+(size / steps * y)
                     if check_break():
                         return
                     # pyautogui.moveTo(coord_x, coord_y)
                     if image[(coord_x, coord_y)][1] < 65:
-                        click((coord_x, coord_y), self.mouse)
+                        self.click((coord_x, coord_y), self.mouse)
 
     def calibrate_distributor(self):
         image = self.get_screenshot()
         while image[(875, 170)] == (0, 0, 0):
             if check_break():
                 return
-            image = self.get_screenshot()
-            
-        click((875, 220), self.mouse)
+            image = get_screenshot()
+
+        self.click((875, 220), self.mouse)
         while image[(875, 350)] == (0, 0, 0):
             if check_break():
                 return
-            image = self.get_screenshot()
-            
-        click((875, 420), self.mouse)
+            image = get_screenshot()
+
+        self.click((875, 420), self.mouse)
         while image[(875, 540)] == (0, 0, 0):
             if check_break():
                 return
-            image = self.get_screenshot()
-        click((875, 600), self.mouse)
+            image = get_screenshot()
+        self.click((875, 600), self.mouse)
 
     def card(self):
-        click((580, 580), self.mouse)
+        self.click((580, 580))
         wait_seconds(1)
 
         if check_break():
@@ -286,11 +277,27 @@ class Tasks:
         self.mouse.release(mouse.Button.left)
 
     def center_click(self):
-        click((DISPLAY_X // 2, DISPLAY_Y //2 ), self.mouse)
+        center = self.program.data.get_center()
+        self.click(center)
 
     # ToDo
     def course(self):
-        raise NotImplementedError
+        image = self.get_screenshot()
+        points = []
+        first_x = 403
+        approved_colours = [(132, 160, 176), (37, 111, 160),
+                            (36, 112, 161), (135, 161, 176), (100, 60, 0), (255, 255, 255)]
+        for i in range(5):
+            x = first_x + i * 140
+            for y in range(200, 550):
+                if image[(x, y-3)] in approved_colours:
+                    points.append((x, y))
+                    break
+        for point in points:
+            self.mouse.position = correct_coords(point)
+            self.mouse.press(mouse.Button.left)
+            wait_seconds(0.2)
+        self.mouse.release(mouse.Button.left)
 
     def divert_1(self):
         switches_x = [443, 510, 578, 648, 717, 784, 854, 923]
@@ -302,13 +309,13 @@ class Tasks:
 
     def download_upload(self):
         cross = (238, 169)
-        click((680, 470), self.mouse)
+        self.click((680, 470))
         self.wait_for_cross(cross)
 
     def fuel(self):
-        self.mouse.position = (1040, 620)
+        self.mouse.position = correct_coords((1040, 620))
         self.mouse.press(mouse.Button.left)
-        wait_seconds(4)
+        wait_seconds(3.5)
         self.mouse.release(mouse.Button.left)
 
     def leaves(self):
@@ -343,15 +350,16 @@ class Tasks:
             y_coord = 304 + y*y_diff
             for x in range(5):
                 x_coord = 447 + x*x_diff
-                squares.append(self.get_square_value((x_coord, y_coord, image)))
+                squares.append(self.get_square_value(
+                    (x_coord, y_coord, image)))
         # print(squares)
         for i in range(1, 11):
             square_to_press = squares.index(i)
-            click((447+(square_to_press % 5)*x_diff,
-                            304+(square_to_press // 5)*y_diff), self.mouse)
+            self.click((447+(square_to_press % 5)*x_diff,
+                        304+(square_to_press // 5)*y_diff))
 
     def sample(self):
-        click((900, 670), self.mouse)
+        self.click((900, 670))
         wait_seconds(62)
         image = self.get_screenshot()
         for i in range(5):
@@ -360,7 +368,7 @@ class Tasks:
             liquid_y = 420
             # print(self.check_coords(x, liquid_y))
             if image[(x, liquid_y)] == (246, 134, 134):
-                click((x, button_y), self.mouse)
+                self.click((x, button_y))
                 break
 
     def scan(self):
@@ -381,7 +389,7 @@ class Tasks:
         for coord in coords:
             g = image[(coord[0], coord[1])][1]
             if g < 50:
-                click((coord), self.mouse)
+                self.click((coord))
 
     def simon_says(self):
         lights = []
@@ -410,7 +418,7 @@ class Tasks:
             for button in order_to_press:
                 if check_break():
                     return
-                click(button, self.mouse)
+                self.click(button)
                 image = self.get_screenshot()
                 if image[(button[0], button[1])] == (189, 43, 0):
                     i = 0
@@ -428,7 +436,7 @@ class Tasks:
         for x in range(origin[0], origin[0] + size[0] + 1, step):
             for y in range(origin[1], origin[1] + size[1] + 1, step):
                 if self.check_cross(cross) and not check_break():
-                    click((x, y), self.mouse)
+                    self.click((x, y))
                 else:
                     return
 
@@ -455,15 +463,6 @@ class Tasks:
             self.program.window.update()
 
 
-class State(Enum):
-    MENU = auto()
-    JOIN = auto()
-    SENTENCES = auto()
-    SETTINGS = auto()
-    TASKS = auto()
-    ABOUT = auto()
-
-
 class Data:
     def __init__(self, m=None, kb=None):
         self.rejoin_code = ""
@@ -472,6 +471,42 @@ class Data:
         self.keyboard = kb if kb != None else keyboard.Controller()
         self.mouse = m if m != None else mouse.Controller()
         self.current_pack = 0
+
+    def get_screenshot(self):
+        image = ImageGrab.grab(bbox=(self.data["display"][0][0],
+                                     self.data["display"][0][1],
+                                     self.data["display"][0][0] +
+                                     self.data["display"][1][0],
+                                     self.data["display"][0][1] + self.data["display"][1][1]))
+        pixels = image.load()
+        return pixels
+
+    def correct_coords(self, coords, subtract=False):
+        if subtract:
+            return (int(coords[0]) - int(self.get_origin()[0]), int(coords[1]) - int(self.get_origin()[1]))
+        return (int(coords[0]) + int(self.get_origin()[0]), int(coords[1]) + int(self.get_origin()[1]))
+
+    def click(self, coords, m=None):
+        m = m if m != None else mouse.Controller()
+        m.position = self.correct_coords(coords)
+        m.click(mouse.Button.left)
+        wait_seconds(0.2)
+
+    def get_coordinates(self, subtract=True):
+        with mouse.Events() as events:
+            for event in events:
+                try:
+                    if event.button == mouse.Button.left:
+                        if subtract:
+                            return self.correct_coords((event.x, event.y), True)
+                        return [event.x, event.y]
+                except Exception:
+                    if check_break():
+                        return tuple()
+                    pass
+
+    def get_center(self):
+        return [el//2 for el in self.get_display_size()]
 
     def read_data_from_file(self):
         # print("Reading data from file.")
@@ -485,6 +520,7 @@ class Data:
                 return {
                     "coords": [[330, 320], [680, 650], [680, 550], [860, 650]],
                     "cooldowns": [3.0, 0.2],
+                    "display": [[0, 0], [1366, 768]],
                     "sentences": [
                         ["S1", ["Sentence", "packet", "1"]]
                     ]
@@ -592,13 +628,27 @@ class Data:
         self.data["cooldowns"][1] = float(cooldown)
         self.write_data_to_file()
 
+    def get_origin(self):
+        return self.data["display"][0]
+
+    def set_origin(self, coords):
+        if len(coords) == 2:
+            self.data["display"][0] = [int(el) for el in coords]
+
+    def get_display_size(self):
+        return self.data["display"][1]
+
+    def set_display_size(self, coords):
+        if len(coords) == 2:
+            self.data["display"][1] = [int(el) for el in coords]
+
     def save(self, map_to_save, sentences):
         # print(f"Save the sentences for {map_to_save}")
         self.sentences[int(map_to_save)][1] = sentences
         self.write_data_to_file()
 
     def send(self, current_pack, textboxes):
-        sentences = [el.get() for el in textboxes]
+        sentences = [el.get().encode('utf-8') for el in textboxes]
         cooldowns = (self.get_cooldown(), self.get_enter_cooldown())
         self.save(current_pack, sentences)
         # print("The sentences are:")
@@ -623,38 +673,39 @@ class Data:
                 # print("Shift was pressed, stop it!")
                 break
             # print("Click cross")
-            click(self.data["coords"][0], self.mouse)
+            self.click(self.data["coords"][0], self.mouse)
             wait_seconds(0.2)
             # print("Click textbox 1")
-            click(self.data["coords"][1], self.mouse)
+            self.click(self.data["coords"][1], self.mouse)
             wait_seconds(0.2)
             # print("Click textbox 2")
-            click(self.data["coords"][2], self.mouse)
+            self.click(self.data["coords"][2], self.mouse)
             wait_seconds(0.2)
             # print("Write the code")
             write(self.rejoin_code, self.keyboard)
             # print("Press the arrow")
-            click(self.data["coords"][3], self.mouse)
+            wait_seconds(0.1)
+            self.click(self.data["coords"][3], self.mouse)
 
     def set_cross(self, coords):
         if len(coords) == 2:
             # print(f"Set cross coords to {coords}")
-            self.data["coords"][0] = coords
+            self.data["coords"][0] = [int(el) for el in coords]
 
     def set_textbox_1(self, coords):
         if len(coords) == 2:
             # print(f"Set textbox coords to {coords}")
-            self.data["coords"][1] = coords
+            self.data["coords"][1] = [int(el) for el in coords]
 
     def set_textbox_2(self, coords):
         if len(coords) == 2:
             # print(f"Set textbox coords to {coords}")
-            self.data["coords"][2] = coords
+            self.data["coords"][2] = [int(el) for el in coords]
 
     def set_arrow(self, coords):
         if len(coords) == 2:
             # print(f"Set arrow coords to {coords}")
-            self.data["coords"][3] = coords
+            self.data["coords"][3] = [int(el) for el in coords]
 
 
 class Program:
@@ -795,14 +846,20 @@ class Program:
     def get_current_state(self):
         return self.states[-1]
 
-    def get_new_coords(self, type):
-        new_coords = get_coordinates()
-        type_definitions = [
-            ("cross", lambda c=new_coords: self.data.set_cross(c)),
-            ("textbox", lambda c=new_coords: self.data.set_textbox_1(c)),
-            ("textbox_2", lambda c=new_coords: self.data.set_textbox_2(c)),
-            ("arrow", lambda c=new_coords: self.data.set_arrow(c))]
-        type_definitions[type][1]()
+    def get_new_coords(self, type_to_replace):
+
+        new_coords = self.data.get_coordinates(
+            subtract=type_to_replace != Coordinate.ORIGIN)
+        type_definitions = {
+            Coordinate.CROSS: lambda c=new_coords: self.data.set_cross(c),
+            Coordinate.TB_1: lambda c=new_coords: self.data.set_textbox_1(c),
+            Coordinate.TB_2: lambda c=new_coords: self.data.set_textbox_2(c),
+            Coordinate.ARROW: lambda c=new_coords: self.data.set_arrow(c),
+            Coordinate.ORIGIN: lambda c=new_coords: self.data.set_origin(c),
+            Coordinate.DISPLAY: lambda c=new_coords: self.data.set_display_size(
+                c)
+        }
+        type_definitions[type_to_replace]()
         self.draw()
 
     def set_all_states(self, states: list):
@@ -812,10 +869,12 @@ class Program:
     def save_settings(self, coords, cooldowns):
         coordinates = [el.get() for el in coords]
         cds = [el.get() for el in cooldowns]
-        self.data.set_cross(coordinates[:2])
-        self.data.set_textbox_1(coordinates[2:4])
-        self.data.set_textbox_2(coordinates[4:6])
-        self.data.set_arrow(coordinates[6:8])
+        self.data.set_origin(coordinates[:2])
+        self.data.set_display_size(coordinates[2:4])
+        self.data.set_cross(coordinates[4:6])
+        self.data.set_textbox_1(coordinates[6:8])
+        self.data.set_textbox_2(coordinates[8:10])
+        self.data.set_arrow(coordinates[10:12])
         self.data.set_cooldown(cds[0])
         self.data.set_enter_cooldown(cds[1])
         self.data.write_data_to_file()
@@ -889,7 +948,7 @@ class Program:
         header.insert(10, string=self.data.get_headers()[current_pack])
         header.grid(row=origin_x + 1, column=origin_y + 1, columnspan=2,
                     padx=1, pady=1, sticky="NEWS")
-        
+
         ttk.Button(self.window, text="->",
                    style="Normal.TButton",
                    command=lambda: (self.data.set_next_pack(), self.draw())).grid(row=origin_x + 1, column=origin_y + 3, sticky="NESW")
@@ -916,16 +975,16 @@ class Program:
 
         self.add_buttons(
             {
-                "Remove sentence": 
-                (lambda tb=textboxes, cp=current_pack: 
-                self.data.remove_sentence(self, cp, tb), True),
-                "Add sentence": 
-                (lambda tb=textboxes, cp=current_pack: 
-                self.data.add_sentence(self, cp, tb), True)
+                "Remove sentence":
+                (lambda tb=textboxes, cp=current_pack:
+                 self.data.remove_sentence(self, cp, tb), True),
+                "Add sentence":
+                (lambda tb=textboxes, cp=current_pack:
+                 self.data.add_sentence(self, cp, tb), True)
             },
             origin_x + len(sentences) + 3,
             2, 2)
-        
+
         ttk.Button(self.window, text="Send!", style="Normal.TButton", command=lambda tb=textboxes, cp=current_pack:
                    self.data.send(cp, tb)).grid(row=origin_x + len(sentences)+4, column=origin_y, columnspan=4, sticky="NESW")
         self.window.mainloop()
@@ -933,14 +992,18 @@ class Program:
     def draw_settings(self):
         self.add_header("Settings")
         buttons = {
-            "CROSS": (lambda: self.get_new_coords(0), "Get coordinates"),
-            "TEXTBOX 1": (lambda: self.get_new_coords(1), "Get coordinates"),
-            "TEXTBOX 2": (lambda: self.get_new_coords(2), "Get coordinates"),
-            "ARROW": (lambda: self.get_new_coords(3), "Get coordinates"),
+            "ORIGIN": (lambda: self.get_new_coords(Coordinate.ORIGIN), "Get coordinates"),
+            "DISPLAY SIZE": (lambda: self.get_new_coords(Coordinate.DISPLAY), "Get coordinates"),
+            "CROSS": (lambda: self.get_new_coords(Coordinate.CROSS), "Get coordinates"),
+            "TEXTBOX 1": (lambda: self.get_new_coords(Coordinate.TB_1), "Get coordinates"),
+            "TEXTBOX 2": (lambda: self.get_new_coords(Coordinate.TB_2), "Get coordinates"),
+            "ARROW": (lambda: self.get_new_coords(Coordinate.ARROW), "Get coordinates"),
             "CHAT COOLDOWN": None,
             "ENTER COOLDOWN": None
         }
         origin_x, origin_y = 2, 0
+        origin = self.data.get_origin()
+        display_size = self.data.get_display_size()
         cross = self.data.get_cross_coords()
         textbox_1 = self.data.get_textbox_1_coords()
         textbox_2 = self.data.get_textbox_2_coords()
@@ -954,7 +1017,7 @@ class Program:
         for j, data_element in enumerate(buttons):
             ttk.Label(
                 self.window, style="Normal.TLabel", text=data_element.capitalize()).grid(row=origin_x + j + 1, column=origin_y, sticky="NESW")
-            if j < 4:
+            if j < 6:
                 for i in range(2):
 
                     tb = ttk.Entry(
@@ -972,6 +1035,12 @@ class Program:
                     elif data_element == "ARROW":
                         tb.insert(
                             10, string=arrow[i % 2])
+                    elif data_element == "DISPLAY SIZE":
+                        tb.insert(
+                            10, string=display_size[i % 2])
+                    elif data_element == "ORIGIN":
+                        tb.insert(
+                            10, string=origin[i % 2])
                     tb.grid(row=origin_x + j+1, column=origin_y + i + 1,
                             sticky="NESW", padx=1, pady=1)
                 ttk.Button(self.window, text=buttons[data_element][1],
@@ -988,10 +1057,10 @@ class Program:
                 cooldowns.append(spinbox)
                 if data_element == "CHAT COOLDOWN":
                     spinbox.insert(0, self.data.get_cooldown())
-                    
+
                 if data_element == "ENTER COOLDOWN":
                     spinbox.insert(0, self.data.get_enter_cooldown())
-                    
+
                 spinbox.grid(row=origin_x + j+1, column=origin_y + 1,
                              padx=1, pady=1, columnspan=3, sticky="NEWS")
 
