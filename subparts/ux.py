@@ -39,6 +39,7 @@ class Program:
     def configure_style(self):
         bg = "black"
         fg = "white"
+        fg_disabled = "gray"
         active = "lime"
         self.font = ("Arial", 16)
         header_font = ("Arial Bold", 18)
@@ -72,6 +73,12 @@ class Program:
         self.style.configure("Normal.TButton",
                              background=bg,
                              foreground=fg,
+                             font=self.font
+                             )
+
+        self.style.configure("Disabled.TButton",
+                             background=bg,
+                             foreground=fg_disabled,
                              font=self.font
                              )
 
@@ -132,9 +139,14 @@ class Program:
     def add_buttons(self, buttons, from_row, columnspan, columns=1):
         for i, el in enumerate(buttons):
             com, enabled = buttons[el]
-            ttk.Button(self.window, text=el, style="Normal.TButton",
-                       command=com, state=('enabled' if enabled else 'disabled')).grid(
-                row=from_row + (i // columns), column=(i*columnspan) % (columns*columnspan), sticky="NESW", columnspan=columnspan)
+            if enabled:
+                ttk.Button(self.window, text=el, style="Normal.TButton",
+                        command=com, state='enabled').grid(
+                    row=from_row + (i // columns), column=(i*columnspan) % (columns*columnspan), sticky="NESW", columnspan=columnspan)
+            else:
+                ttk.Button(self.window, text=el, style="Disabled.TButton",
+                        command=com, state='disabled').grid(
+                    row=from_row + (i // columns), column=(i*columnspan) % (columns*columnspan), sticky="NESW", columnspan=columnspan)
 
     def clear_window(self):
         # print("Let's clear everything")
