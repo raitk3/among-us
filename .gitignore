@@ -1,0 +1,4 @@
+subparts/__pycache__
+*.txt
+*.bak
+*.json
