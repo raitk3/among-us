@@ -22,12 +22,12 @@ def send(filename):
     
     for index, sentence in enumerate(sentences):
         if index != 0:
-            wait_seconds(0.52)
+            wait_seconds(2.5)
         if keyboard.is_pressed('shift'):
             break
         print(sentence)
         keyboard.write(sentence)
-        wait_seconds(0.08)
+        wait_seconds(0.75)
         print("SEND!")
         keyboard.send('enter')
 

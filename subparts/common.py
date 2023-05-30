@@ -1,40 +1,70 @@
 import keyboard as kbd
-from pynput import keyboard
-import numpy as np
+import subparts.data as data
+from pynput import mouse, keyboard
 
 from enum import Enum, auto
 import time
 
-def check_break(kb=None):
-    if kb == None:
-        kb = keyboard.Controller()
-    return kbd.is_pressed("shift") or kbd.is_pressed("Esc")
+class Common:
+    def __init__(self):
+        self.mouse = mouse.Controller()
+        self.kb = keyboard.Controller()
+        self.data = data.Data(self)
 
-def wait_seconds(seconds: float, kb=None):
-    time_start = time.time()
-    while (time.time() - time_start < seconds):
-        if check_break(kb):
-            break
+    def check_break(self):
+        return kbd.is_pressed("shift") or kbd.is_pressed("Esc")
 
-def write(text, kb=None):
-    kb = kb if kb != None else keyboard.Controller()
-    kb.type(text)
+    def click(self, coords):
+            self.mouse.position = coords
+            self.mouse.click(mouse.Button.left)
+            self.wait_seconds(0.2)
 
-def key_press(button, kb=None):
-    kb = kb if kb != None else keyboard.Controller()
-    kb.tap(button)
+    def scale_to_coords(self, coords):
+        center = self.data.get_center()
+        scale = self.data.get_scale()
+        return (center[0]+(coords[0]*scale), center[1]+(coords[1]*scale))
 
+    def click_from_center(self, scales):
+        self.mouse.position = self.scale_to_coords(scales)
+        self.mouse.click(mouse.Button.left)
 
-def cart_to_polar(center, x, y):
-    diff_x, diff_y = center[0] - x, center[1] - y
-    rho = np.sqrt(diff_x**2 + diff_y**2)
-    phi = np.arctan2(diff_y, diff_x)
-    return rho, phi
+    def hold_from_center(self, scales):
+        self.mouse.position = self.scale_to_coords(scales)
+        self.mouse.press(mouse.Button.left)
 
-def polar_to_cart(center, rho, phi):
-    x = rho * np.cos(phi)
-    y = rho * np.sin(phi)
-    return center[0] + x, center[1] + y
+    def drag_from_center(self, start, end, time_to_wait = 0):
+        """
+        ToDo:
+        Make use of pyautogui.drag()
+        - Not useful
+        """
+        time_to_wait_between_actions = 0.1
+        self.mouse.position = self.scale_to_coords(start)
+        if self.check_break():
+            return
+        self.mouse.press(mouse.Button.left)
+        self.wait_seconds(time_to_wait_between_actions)
+        if self.check_break():
+            return
+        self.mouse.position = self.scale_to_coords(end)
+        if self.check_break():
+            self.mouse.release(mouse.Button.left)
+            return
+        self.wait_seconds(time_to_wait + time_to_wait_between_actions)
+        self.mouse.release(mouse.Button.left)
+        self.wait_seconds(time_to_wait_between_actions)
+
+    def wait_seconds(self, seconds: float):
+        time_start = time.time()
+        while (time.time() - time_start < seconds):
+            if self.check_break():
+                break
+
+    def write(self, text):
+        self.kb.type(text)
+
+    def key_press(self, button):
+        self.kb.tap(button)
 
 class State(Enum):
     MENU = auto()
@@ -50,5 +80,5 @@ class Coordinate(Enum):
     TB_1 = auto()
     TB_2 = auto()
     ARROW = auto()
-    ORIGIN = auto()
-    DISPLAY = auto()
+    TOP_LEFT = auto()
+    BOTTOM_RIGHT = auto()

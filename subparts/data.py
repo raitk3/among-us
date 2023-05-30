@@ -2,15 +2,12 @@ from PIL import ImageGrab
 import json
 from pynput import mouse, keyboard
 
-from subparts.common import *
-
 class Data:
-    def __init__(self, m=None, kb=None):
+    def __init__(self, common):
+        self.common = common
         self.rejoin_code = ""
         self.data = self.read_data_from_file()
         self.sentences = self.data["sentences"]
-        self.keyboard = kb if kb != None else keyboard.Controller()
-        self.mouse = m if m != None else mouse.Controller()
         self.current_pack = 0
 
     def get_screenshot(self):
@@ -22,33 +19,24 @@ class Data:
         pixels = image.load()
         return pixels
 
-    def correct_coords(self, coords, subtract=False):
-        if subtract:
-            return (int(coords[0]) - int(self.get_origin()[0]), int(coords[1]) - int(self.get_origin()[1]))
-        return (int(coords[0]) + int(self.get_origin()[0]), int(coords[1]) + int(self.get_origin()[1]))
-
-    def click(self, coords, m=None):
-        m = m if m != None else mouse.Controller()
-        m.position = self.correct_coords(coords)
-        m.click(mouse.Button.left)
-        wait_seconds(0.2)
-
-    def get_coordinates(self, subtract=True):
+    def get_coordinates(self):
         with mouse.Events() as events:
             for event in events:
                 try:
                     if event.button == mouse.Button.left:
-                        if subtract:
-                            return self.correct_coords((event.x, event.y), True)
                         return [event.x, event.y]
                 except Exception:
-                    if check_break():
+                    if self.common.check_break():
                         return tuple()
                     pass
 
     def get_center(self):
-        return [el//2 for el in self.get_display_size()]
+        return ((self.get_bottom_right_corner()[0] + self.get_top_left()[0]) // 2,
+                (self.get_bottom_right_corner()[1] + self.get_top_left()[1]) // 2)
 
+    def get_display_size(self):
+        return (self.get_bottom_right_corner()[0] - self.get_top_left()[0], self.get_bottom_right_corner()[1] - self.get_top_left()[1])
+    
     def read_data_from_file(self):
         # print("Reading data from file.")
         try:
@@ -137,6 +125,9 @@ class Data:
         # print(f"Set current map to {new_pack}")
         self.current_pack = int(new_pack)
 
+    def get_scale(self):
+        return min(self.get_display_size()) / 2
+
     def rename_current_pack(self, new_name):
         # print(f"Renaming pack {self.current_pack} to {new_name}.")
         self.sentences[self.current_pack][0] = new_name
@@ -169,17 +160,17 @@ class Data:
         self.data["cooldowns"][1] = float(cooldown)
         self.write_data_to_file()
 
-    def get_origin(self):
+    def get_top_left(self):
         return self.data["display"][0]
 
-    def set_origin(self, coords):
+    def set_top_left(self, coords):
         if len(coords) == 2:
             self.data["display"][0] = [int(el) for el in coords]
 
-    def get_display_size(self):
+    def get_bottom_right_corner(self):
         return self.data["display"][1]
 
-    def set_display_size(self, coords):
+    def set_bottom_right_corner(self, coords):
         if len(coords) == 2:
             self.data["display"][1] = [int(el) for el in coords]
 
@@ -195,37 +186,37 @@ class Data:
         # print("The sentences are:")
         # print(*sentences, sep="\n")
         for sentence in sentences:
-            wait_seconds(cooldowns[0])
-            if check_break():
+            self.common.wait_seconds(cooldowns[0])
+            if self.common.check_break():
                 # print("Shift was pressed, stooooop!")
                 break
             # print("Writing:", sentence)
-            write(sentence, self.keyboard)
-            wait_seconds(cooldowns[1])
+            self.common.write(sentence, self.keyboard)
+            self.common.wait_seconds(cooldowns[1])
             # print("SEND IT!")
-            key_press(keyboard.Key.enter, self.keyboard)
+            self.common.key_press(keyboard.Key.enter, self.keyboard)
 
     def rejoin(self, window, code):
         self.rejoin_code = code[0].get().upper()
         # print("Rejoin code is: ", self.rejoin_code)
         while True:
-            wait_seconds(2)
-            if check_break():
+            self.common.wait_seconds(2)
+            if self.common.check_break():
                 # print("Shift was pressed, stop it!")
                 break
             # print("Click cross")
             self.click(self.data["coords"][0], self.mouse)
-            wait_seconds(0.2)
+            self.common.wait_seconds(0.2)
             # print("Click textbox 1")
             self.click(self.data["coords"][1], self.mouse)
-            wait_seconds(0.2)
+            self.common.wait_seconds(0.2)
             # print("Click textbox 2")
             self.click(self.data["coords"][2], self.mouse)
-            wait_seconds(0.2)
+            self.common.wait_seconds(0.2)
             # print("Write the code")
-            write(self.rejoin_code, self.keyboard)
+            self.common.write(self.rejoin_code, self.keyboard)
             # print("Press the arrow")
-            wait_seconds(0.1)
+            self.common.wait_seconds(0.1)
             self.click(self.data["coords"][3], self.mouse)
 
     def set_cross(self, coords):

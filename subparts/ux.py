@@ -1,5 +1,4 @@
 from subparts.common import *
-import subparts.data as data
 import subparts.tasks as tasks
 import base64
 import base64
@@ -10,9 +9,8 @@ from pynput import mouse
 
 class Program:
     def __init__(self, title, version, version_type):
-        self.data = data.Data()
-        self.keyboard = keyboard.Controller()
-        self.mouse = mouse.Controller()
+        self.common = Common()
+        self.data = self.common.data
         self.tasks = tasks.Tasks(self)
         self.window = tk.Tk()
         self.style = ttk.Style()
@@ -162,17 +160,16 @@ class Program:
 
     def get_new_coords(self, type_to_replace):
 
-        new_coords = self.data.get_coordinates(
-            subtract=type_to_replace != Coordinate.ORIGIN)
+        new_coords = self.data.get_coordinates()
         type_definitions = {
             Coordinate.CROSS: lambda c=new_coords: self.data.set_cross(c),
             Coordinate.TB_1: lambda c=new_coords: self.data.set_textbox_1(c),
             Coordinate.TB_2: lambda c=new_coords: self.data.set_textbox_2(c),
             Coordinate.ARROW: lambda c=new_coords: self.data.set_arrow(c),
-            Coordinate.ORIGIN: lambda c=new_coords: self.data.set_origin(c),
-            Coordinate.DISPLAY: lambda c=new_coords: self.data.set_display_size(
-                c)
+            Coordinate.TOP_LEFT: lambda c=new_coords: self.data.set_top_left(c),
+            Coordinate.BOTTOM_RIGHT: lambda c=new_coords: self.data.set_bottom_right_corner(c)
         }
+        print(type_to_replace)
         type_definitions[type_to_replace]()
         self.draw()
 
@@ -183,8 +180,8 @@ class Program:
     def save_settings(self, coords, cooldowns):
         coordinates = [el.get() for el in coords]
         cds = [el.get() for el in cooldowns]
-        self.data.set_origin(coordinates[:2])
-        self.data.set_display_size(coordinates[2:4])
+        self.data.set_top_left(coordinates[:2])
+        self.data.set_bottom_right_corner(coordinates[2:4])
         self.data.set_cross(coordinates[4:6])
         self.data.set_textbox_1(coordinates[6:8])
         self.data.set_textbox_2(coordinates[8:10])
@@ -300,8 +297,10 @@ class Program:
     def draw_settings(self):
         self.add_header("Settings")
         buttons = {
-            "ORIGIN": (lambda: self.get_new_coords(Coordinate.ORIGIN), "Get coordinates"),
-            "DISPLAY SIZE": (lambda: self.get_new_coords(Coordinate.DISPLAY), "Get coordinates"),
+            "TOP LEFT CORNER": (lambda: self.get_new_coords(Coordinate.TOP_LEFT), "Get coordinates"),
+            "BOTTOM RIGHT CORNER": (lambda: self.get_new_coords(Coordinate.BOTTOM_RIGHT), "Get coordinates"),
+            "DISPLAY SIZE": None,
+            "CENTER": None,
             "CROSS": (lambda: self.get_new_coords(Coordinate.CROSS), "Get coordinates"),
             "TEXTBOX 1": (lambda: self.get_new_coords(Coordinate.TB_1), "Get coordinates"),
             "TEXTBOX 2": (lambda: self.get_new_coords(Coordinate.TB_2), "Get coordinates"),
@@ -310,8 +309,8 @@ class Program:
             "ENTER COOLDOWN": None
         }
         origin_x, origin_y = 2, 0
-        origin = self.data.get_origin()
-        display_size = self.data.get_display_size()
+        origin = self.data.get_top_left()
+        display_size = self.data.get_bottom_right_corner()
         cross = self.data.get_cross_coords()
         textbox_1 = self.data.get_textbox_1_coords()
         textbox_2 = self.data.get_textbox_2_coords()
@@ -321,34 +320,30 @@ class Program:
         cooldowns = []
 
         ttk.Button(self.window, text="Save", style="Normal.TButton", command=lambda c=coords,
-                   cd=cooldowns: self.save_settings(c, cd)).grid(row=0, column=3, sticky="NEWS")
+                   cd=cooldowns: [self.save_settings(c, cd), self.draw()]).grid(row=0, column=3, sticky="NEWS")
         for j, data_element in enumerate(buttons):
             ttk.Label(
                 self.window, style="Normal.TLabel", text=data_element.capitalize()).grid(row=origin_x + j + 1, column=origin_y, sticky="NESW")
-            if j < 6:
+            ttk.Label(
+                self.window, style="Normal.TLabel", text=data_element.capitalize()).grid(row=origin_x + j + 1, column=origin_y, sticky="NESW")
+            if j in range(0, 2) or j in range(4, 8):
                 for i in range(2):
 
                     tb = ttk.Entry(
                         self.window, style="Normal.TEntry", font=self.font)
                     coords.append(tb)
                     if data_element == "CROSS":
-                        tb.insert(
-                            10, string=cross[i % 2])
+                        tb.insert(10, string=cross[i % 2])
                     elif data_element == "TEXTBOX 1":
-                        tb.insert(
-                            10, string=textbox_1[i % 2])
+                        tb.insert(10, string=textbox_1[i % 2])
                     elif data_element == "TEXTBOX 2":
-                        tb.insert(
-                            10, string=textbox_2[i % 2])
+                        tb.insert(10, string=textbox_2[i % 2])
                     elif data_element == "ARROW":
-                        tb.insert(
-                            10, string=arrow[i % 2])
-                    elif data_element == "DISPLAY SIZE":
-                        tb.insert(
-                            10, string=display_size[i % 2])
-                    elif data_element == "ORIGIN":
-                        tb.insert(
-                            10, string=origin[i % 2])
+                        tb.insert(10, string=arrow[i % 2])
+                    elif data_element == "BOTTOM RIGHT CORNER":
+                        tb.insert(10, string=display_size[i % 2])
+                    elif data_element == "TOP LEFT CORNER":
+                        tb.insert(10, string=origin[i % 2])
                     tb.grid(row=origin_x + j+1, column=origin_y + i + 1,
                             sticky="NESW", padx=1, pady=1)
                 ttk.Button(self.window, text=buttons[data_element][1],
@@ -356,7 +351,18 @@ class Program:
                            # state="disabled",
                            command=buttons[data_element][0]).grid(
                     row=origin_x + j + 1, column=origin_y + 3, sticky="NESW")
-            else:
+            elif j in range(2, 4):
+                if j == 2:
+                    text = self.data.get_display_size()
+                else:
+                    text = self.data.get_center()
+                label_x = ttk.Label(
+                    self.window, style="Normal.TLabel", text=text[0]
+                    ).grid(row=origin_x + j + 1, column=origin_y + 1, sticky="NESW")
+                label_y = ttk.Label(
+                    self.window, style="Normal.TLabel", text=text[1]
+                    ).grid(row=origin_x + j + 1, column=origin_y + 2, sticky="NESW")
+            elif j in range(8, 10):
                 spinbox = ttk.Spinbox(self.window,
                                       values=[l / 10 for l in range(1, 100)],
                                       style="Normal.TSpinbox",

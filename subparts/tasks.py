@@ -1,13 +1,10 @@
-from ast import Pass
 from subparts.common import *
-from pynput import mouse
+
 class Tasks:
     def __init__(self, program):
-        self.use_button = (0, 0)
         self.program = program
-        self.mouse = self.program.mouse
-        self.keyboard = self.program.keyboard
-        self.mouse = self.program.mouse
+        self.common = self.program.common
+        self.data = self.common.data
         self.kill_status = False
         self.tasks = {
             # command, enabled, usebutton
@@ -18,17 +15,17 @@ class Tasks:
             "Clean vent": (lambda: self.vent(), False, True),
             "Divert 1": (lambda: self.divert_1(), False, True),
             "Divert 2": (lambda: self.center_click(), True, True),
-            "Download/Upload": (lambda: self.download_upload(), False, True),
-            "Fix wiring": (lambda: self.wires(), False, True),
-            "Fuel engines": (lambda: self.fuel(), False, True),
+            "Download/Upload": (lambda: self.download_upload(), True, True),
+            "Fix wiring": (lambda: self.wires(), True, True),
+            "Fuel engines": (lambda: self.fuel(), True, True),
             "Inspect sample": (lambda: self.sample(), False, True),
             "Leaves": (lambda: self.leaves(), False, True),
-            "Scan": (lambda: self.scan(), False, True),
+            "Scan": (lambda: self.scan(), True, True),
             "Shields": (lambda: self.shields(), False, True),
             "Stabilize steering": (lambda: self.center_click(), True, True),
-            "Start reactor": (lambda: self.simon_says(), False, True),
+            "Start reactor": (lambda: self.simon_says(), True, True),
             "Swipe card": (lambda: self.card(), False, True),
-            "Trash": (lambda: self.trash(), False, True),
+            "Trash": (lambda: self.trash(), True, True),
             "Unlock manifolds": (lambda: self.manifolds(), False, True),
             "COVID": (lambda: self.kill(), True, False)
         }
@@ -39,7 +36,10 @@ class Tasks:
         return self.program.data.get_screenshot()
 
     def click(self, coords):
-        self.program.data.click(coords, self.mouse)
+        self.common.click(coords)
+    
+    def click_from_center(self, coords):
+        self.common.click_from_center(coords)
 
     def check_cross(self, coords, image=None):
         if image == None:
@@ -98,20 +98,20 @@ class Tasks:
         return "yo wtf"
 
     def check_simon_lights(self):
-        lights = [(340 + i*60, 225) for i in range(5)]
+        lights = [(-0.8932 + i*0.078125, -0.415) for i in range(5)]
         count = 0
 
         while count < 1:
-            if check_break():
+            if self.common.check_break():
                 break
             image = self.get_screenshot()
             for i, light in enumerate(lights):
-                if image[(light[0], light[1])][1] > 150:
+                if image[self.common.scale_to_coords((light[0], light[1]))][1] > 175:
                     # print(f"{i}: on")
                     count += 1
                 else:
-                    pass
                     # print(f"{i}: off")
+                    break
         return count
 
     def get_square_value(self, coords, image=None):
@@ -142,10 +142,17 @@ class Tasks:
 
     #####CYCLE#####
 
+
+    def get_use_button(self):
+        brc = self.data.get_bottom_right_corner()
+        s = self.data.get_scale()
+        coeff = 0.27
+        return (brc[0] - coeff*s, brc[1] - coeff*s)
+
     def start_task(self):
         self.click((10, 10))
-        self.click(self.use_button)
-        wait_seconds(0.5)
+        self.click(self.get_use_button())
+        self.common.wait_seconds(0.5)
 
     def do_task(self, task_to_do):
         task = self.tasks[task_to_do]
@@ -153,7 +160,7 @@ class Tasks:
             self.start_task()
         task[0]()
         if task[2]:
-            wait_seconds(2)
+            self.common.wait_seconds(2)
 
     #####TASKS#####
 
@@ -170,8 +177,7 @@ class Tasks:
         pass
 
     def center_click(self):
-        center = self.program.data.get_center()
-        self.click(center)
+        self.click_from_center((0, 0))
 
     # ToDo
     def course(self):
@@ -181,10 +187,12 @@ class Tasks:
         pass
 
     def download_upload(self):
-        pass
+        self.click_from_center((0, 0.224))
 
     def fuel(self):
-        pass
+        self.common.hold_from_center((0.93, 0.6146))
+        self.common.wait_seconds(3.5)
+        self.common.mouse.release(mouse.Button.left)
 
     def leaves(self):
         pass
@@ -203,23 +211,68 @@ class Tasks:
         pass
 
     def simon_says(self):
-        pass
+        lights = []
+        buttons = []
+        for i in range(3):
+            spacing = 0.233
+            row = -0.1146 + i*spacing
+            for j in range(3):
+                column = -0.8145 + j*spacing
+                lights.append((column, row))
+            for j in range(3):
+                column = 0.33073 + j*spacing
+                buttons.append((column, row))
+        i = self.check_simon_lights()
+        print(i)
+        while i < 6:
+            # print(i)
+            order_to_press = []
+            while len(order_to_press) < i:
+                image = self.get_screenshot()
+                for j, light in enumerate(lights):
+                    if self.common.check_break():
+                        return
+                    if image[self.common.scale_to_coords((light[0], light[1]))] != (0, 0, 0):
+                        order_to_press.append(buttons[j])
+                        self.common.wait_seconds(0.25)
+                print(order_to_press)
+            print([buttons.index(element) for element in order_to_press])
+            self.common.wait_seconds(0.5)
+            for button in order_to_press:
+                if self.common.check_break():
+                    return
+                self.click_from_center(button)
+                image = self.get_screenshot()
+                if image[self.common.scale_to_coords((button[0], button[1]))] == (189, 43, 0):
+                    i = 0
+            i += 1
+        
+
 
     def trash(self):
-        pass
+        self.common.drag_from_center((0.565, -0.21875), (0.565, 0.302), 2)
 
     def vent(self):
         pass
 
     def wires(self):
-        pass
+        x = [-0.737, 0.667]
+        y = [-0.4974, -0.15104, 0.1927, 0.53646]
+        image = self.get_screenshot()
+        for i in range(4):
+            wire_color = image[self.common.scale_to_coords((x[0], y[i]))]
+            for j in range(4):
+                other_wire = image[self.common.scale_to_coords((x[1], y[j]))]
+                if wire_color == other_wire:
+                    self.common.drag_from_center((x[0], y[i]), (x[1], y[j]))
+                    break
 
     def kill(self):
         self.toggle_kill()
         while self.kill_status:
             # print("kill")
-            key_press("q")
-            if check_break():
+            self.common.key_press("q")
+            if self.common.check_break():
                 self.kill_status = False
-            wait_seconds(0.1)
+            self.common.wait_seconds(0.1)
             self.program.window.update()
