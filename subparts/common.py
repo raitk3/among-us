@@ -24,6 +24,12 @@ class Common:
         scale = self.data.get_scale()
         return (center[0]+(coords[0]*scale), center[1]+(coords[1]*scale))
 
+    def left_mouse_button(self, on):
+        if on:
+            self.mouse.press(mouse.Button.left)
+        else:
+            self.mouse.release(mouse.Button.left)
+
     def click_from_center(self, scales):
         self.mouse.position = self.scale_to_coords(scales)
         self.mouse.click(mouse.Button.left)
@@ -67,13 +73,12 @@ class Common:
         self.kb.tap(button)
 
 class State(Enum):
+    NA = auto()
     MENU = auto()
     JOIN = auto()
-    SENTENCES = auto()
     SETTINGS = auto()
     TASKS = auto()
     ABOUT = auto()
-
 
 class Coordinate(Enum):
     CROSS = auto()
@@ -82,3 +87,20 @@ class Coordinate(Enum):
     ARROW = auto()
     TOP_LEFT = auto()
     BOTTOM_RIGHT = auto()
+
+class Map(Enum):
+    SKELD = 0
+    MIRA = 1
+    POLUS = 2
+    AIRSHIP = 3
+    FUNGLE = 4
+
+    def from_string(map):
+        maps = {
+            "skeld": Map.SKELD,
+            "mira": Map.MIRA,
+            "polus": Map.POLUS,
+            "airship": Map.AIRSHIP,
+            "fungle": Map.FUNGLE
+        }
+        return maps.get(map.lower(), Map.SKELD)

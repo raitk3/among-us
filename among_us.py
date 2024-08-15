@@ -1,7 +1,9 @@
 import subparts.ux
 import time
 
-VERSION_NUMBER = str(time.strftime("%y%m%d"))
+
+#VERSION_NUMBER = str(time.strftime("%y%m%d"))
+VERSION_NUMBER = "20240816"
 VERSION = "ALPHA"
 
 def main():
@@ -9,3 +11,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+    

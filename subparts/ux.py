@@ -1,20 +1,34 @@
 from subparts.common import *
+from subparts.controller import Controller
 import subparts.tasks as tasks
 import base64
 import base64
 import os
 import tkinter as tk
-from tkinter import ttk
-from pynput import mouse
+import subparts.view.views.about as about_view
+import subparts.view.views.join as join_view
+import subparts.view.views.menu as menu_view
+import subparts.view.views.na as na_view
+import subparts.view.views.settings as settings_view
+import subparts.view.views.tasks as tasks_view
 
 class Program:
     def __init__(self, title, version, version_type):
         self.common = Common()
         self.data = self.common.data
         self.tasks = tasks.Tasks(self)
+        self.controller = Controller(self)
         self.window = tk.Tk()
-        self.style = ttk.Style()
-        self.configure_style()
+
+        self.views = {
+            State.ABOUT.name: about_view.About(self),
+            State.JOIN.name: join_view.Join(self),
+            State.MENU.name: menu_view.Menu(self),
+            State.NA.name: na_view.NA(self),
+            State.SETTINGS.name: settings_view.Settings(self),
+            State.TASKS.name: tasks_view.Tasks(self)
+        }
+
         self.title = title
         self.version = version
         self.version_type = version_type
@@ -32,124 +46,8 @@ class Program:
             pass
             # print("Icon failed")
         self.states = [State.MENU]
-        self.draw()
-
-    def configure_style(self):
-        bg = "black"
-        fg = "white"
-        fg_disabled = "gray"
-        active = "lime"
-        self.font = ("Arial", 16)
-        header_font = ("Arial Bold", 18)
-        self.style.theme_use('clam')
-
-        self.window.configure(bg="black")
-
-        self.style.configure("Borderless.TLabel",
-                             background=bg,
-                             foreground=bg,
-                             relief="flat",
-                             font=header_font,
-                             )
-        self.style.configure("Header.TLabel",
-                             background=bg,
-                             foreground=fg,
-                             font=header_font,
-                             relief="raised")
-
-        self.style.configure("Normal.TLabel",
-                             background=bg,
-                             foreground=fg,
-                             font=self.font,
-                             relief="raised")
-
-        self.style.configure("About.TLabel",
-                             background=bg,
-                             foreground=fg,
-                             font=self.font)
-
-        self.style.configure("Normal.TButton",
-                             background=bg,
-                             foreground=fg,
-                             font=self.font
-                             )
-
-        self.style.configure("Disabled.TButton",
-                             background=bg,
-                             foreground=fg_disabled,
-                             font=self.font
-                             )
-
-        self.style.map('TButton', foreground=[
-                       ('active', active)], background=[('active', bg)])
-
-        self.style.configure("Normal.TEntry",
-                             background=bg,
-                             foreground=fg,
-                             fieldbackground=bg
-                             )
-
-        self.style.map('Normal.TCombobox', fieldbackground=[('readonly', bg)])
-        self.style.map('Normal.TCombobox', selectbackground=[('readonly', bg)])
-        self.style.map('Normal.TCombobox', selectforeground=[('readonly', fg)])
-        self.style.configure('Normal.TCombobox', foreground=fg, background=fg)
-
-        self.style.layout('Normal.TSpinbox', [('Spinbox.field',
-                                               {'expand': 1,
-                                                'sticky': 'nswe',
-                                                'children': [('null',
-                                                              {'side': 'right',
-                                                               'sticky': 'ns',
-                                                               'children': [('Spinbox.uparrow', {'side': 'top', 'sticky': 'e'}),
-                                                                            ('Spinbox.downarrow', {'side': 'bottom', 'sticky': 'e'})]}),
-                                                             ('Spinbox.padding',
-                                                              {'sticky': 'nswe',
-                                                               'children': [('Spinbox.textarea', {'sticky': 'nswe'})]})]})])
-
-        self.style.configure("Normal.TSpinbox",
-                             background=fg,
-                             foreground=fg,
-                             fieldbackground=bg,
-                             arrowsize=17)
-
-    def add_header(self, title):
-        # print("Adding header")
-        if len(self.get_all_states()) > 1:
-            # print("The states list is longer than 1, so I could go back...add Back button")
-            ttk.Button(self.window, text="Back", style="Normal.TButton", command=lambda: self.set_all_states(self.get_all_states()[:-1])).grid(
-                row=0, column=0, sticky="NESW")
-        else:
-            ttk.Button(self.window, text="Exit", style="Normal.TButton",
-                       command=lambda: exit()).grid(row=0, column=3, sticky="NESW")
-            ttk.Button(self.window, text="About", style="Normal.TButton", command=lambda: self.set_state(
-                State.ABOUT)).grid(row=0, column=0, sticky="NESW")
-
-        # print(f"The title is '{title}'")
-        ttk.Label(self.window, style="Header.TLabel", text=title.upper(), anchor="center").grid(
-            row=0, column=1, columnspan=2, rowspan=2, sticky="NESW")
-        ttk.Label(self.window, style="Borderless.TLabel",
-                  text="l").grid(row=1, column=0, sticky="NEWS")
-        if self.get_current_state() not in [State.SETTINGS, State.MENU]:
-            # print("It's not Settings nor menu, so let's add Settings button, too")
-            ttk.Button(self.window, text="Settings", style="Normal.TButton", command=lambda: self.set_state(State.SETTINGS)).grid(
-                row=0, column=3, sticky="NESW")
-
-    def add_buttons(self, buttons, from_row, columnspan, columns=1):
-        for i, el in enumerate(buttons):
-            com, enabled = buttons[el]
-            if enabled:
-                ttk.Button(self.window, text=el, style="Normal.TButton",
-                        command=com, state='enabled').grid(
-                    row=from_row + (i // columns), column=(i*columnspan) % (columns*columnspan), sticky="NESW", columnspan=columnspan)
-            else:
-                ttk.Button(self.window, text=el, style="Disabled.TButton",
-                        command=com, state='disabled').grid(
-                    row=from_row + (i // columns), column=(i*columnspan) % (columns*columnspan), sticky="NESW", columnspan=columnspan)
-
-    def clear_window(self):
-        # print("Let's clear everything")
-        for el in self.window.winfo_children():
-            el.destroy()
+        self.drawn_state = State.NA
+        self.mainloop()
 
     def get_all_states(self):
         # print("Current states list is:", self.states)
@@ -177,19 +75,6 @@ class Program:
         self.states = states
         self.draw()
 
-    def save_settings(self, coords, cooldowns):
-        coordinates = [el.get() for el in coords]
-        cds = [el.get() for el in cooldowns]
-        self.data.set_top_left(coordinates[:2])
-        self.data.set_bottom_right_corner(coordinates[2:4])
-        self.data.set_cross(coordinates[4:6])
-        self.data.set_textbox_1(coordinates[6:8])
-        self.data.set_textbox_2(coordinates[8:10])
-        self.data.set_arrow(coordinates[10:12])
-        self.data.set_cooldown(cds[0])
-        self.data.set_enter_cooldown(cds[1])
-        self.data.write_data_to_file()
-
     def set_state(self, state: State):
         # print("Next state is", state)
         self.states.append(state)
@@ -199,217 +84,28 @@ class Program:
         if len(self.get_all_states()) > 1:
             self.states = self.states[:-1]
 
-    def draw_about(self):
-        self.add_header("About")
-        data = {
-            "Version": self.version + "_" + self.version_type if len(self.version_type) > 0 else self.version,
-            "Author": "Rait Kulbok"
-        }
-        for i, el in enumerate(data):
-            ttk.Label(self.window, text=el+":", style="About.TLabel",
-                      anchor="e").grid(row=i+2, column=0, columnspan=2, sticky="NEWS")
-            ttk.Label(self.window, text=" " + data[el], style="About.TLabel", anchor="w").grid(
-                row=i+2, column=2, columnspan=2, sticky="NEWS")
-
-    def draw_menu(self):
-        menu_items = {
-            "Join a lobby": (lambda: self.set_state(State.JOIN), True),
-            "Sentences": (lambda: self.set_state(State.SENTENCES), True),
-            "Tasks": (lambda: self.set_state(State.TASKS), True),
-            "Settings": (lambda: self.set_state(State.SETTINGS), True),
-        }
-        self.add_header(self.title)
-        self.add_buttons(menu_items, 2, 2, 2)
-
-    def draw_rejoin(self):
-        self.add_header("Join a lobby")
-        coords = []
-        code = []
-        origin_x, origin_y = 2, 0
-
-        ttk.Label(self.window, style="Normal.TLabel", text="Code").grid(
-            row=origin_x + 1, column=origin_y, sticky="NEWS")
-
-        tb = ttk.Entry(self.window, style="Normal.TEntry", font=self.font)
-        code.append(tb)
-        tb.insert(10, self.data.rejoin_code)
-        tb.grid(row=origin_x + 1, column=origin_y + 1, sticky="NESW",
-                columnspan=2, padx=1, pady=1)
-        ttk.Button(self.window, text="Join", style="Normal.TButton", command=lambda coords=coords, code=code: self.data.rejoin(self, code)).grid(
-            row=origin_x + 1, column=origin_y + 3, sticky="NESW")
-
-    def draw_sentences(self, event=None):
-        origin_x, origin_y = 2, 0
-        self.add_header("Sentences")
-        textboxes = []
-        current_pack = self.data.get_current_pack()
-        sentences = self.data.get_sentences_pack(current_pack)
-
-        ttk.Button(self.window, text="<-",
-                   style="Normal.TButton",
-                   command=lambda: (self.data.set_previous_pack(), self.draw())).grid(row=origin_x + 1, column=origin_y, sticky="NESW")
-
-        header = ttk.Entry(self.window, style="Normal.TEntry", font=self.font)
-        header.insert(10, string=self.data.get_headers()[current_pack])
-        header.grid(row=origin_x + 1, column=origin_y + 1, columnspan=2,
-                    padx=1, pady=1, sticky="NEWS")
-
-        ttk.Button(self.window, text="->",
-                   style="Normal.TButton",
-                   command=lambda: (self.data.set_next_pack(), self.draw())).grid(row=origin_x + 1, column=origin_y + 3, sticky="NESW")
-
-        row_3 = {
-            "Rename": (lambda h=header: (self.data.rename_current_pack(h.get()), self.draw()), True),
-            "Save": (lambda: self.draw(), True),
-            "Remove": (lambda: self.draw(), True),
-            "Add": (lambda: (self.data.add_sentence_pack(), self.draw()), True),
-        }
-
-        self.add_buttons(row_3, 4, 1, 4)
-
-        for i, sentence in enumerate(sentences):
-            ttk.Label(
-                self.window, text=f"Sentence {i+1}", style="Normal.TLabel").grid(row=origin_x + i + 3, column=origin_y, sticky="NESW")
-            tb = ttk.Entry(self.window,
-                           style="Normal.TEntry",
-                           font=self.font,)
-            textboxes.append(tb)
-            tb.insert(10, string=sentence)
-            tb.grid(row=origin_x + i + 3, column=origin_y + 1, columnspan=3,
-                    sticky="NESW", padx=1, pady=1)
-
-        self.add_buttons(
-            {
-                "Remove sentence":
-                (lambda tb=textboxes, cp=current_pack:
-                 self.data.remove_sentence(self, cp, tb), True),
-                "Add sentence":
-                (lambda tb=textboxes, cp=current_pack:
-                 self.data.add_sentence(self, cp, tb), True)
-            },
-            origin_x + len(sentences) + 3,
-            2, 2)
-
-        ttk.Button(self.window, text="Send!", style="Normal.TButton", command=lambda tb=textboxes, cp=current_pack:
-                   self.data.send(cp, tb)).grid(row=origin_x + len(sentences)+4, column=origin_y, columnspan=4, sticky="NESW")
-        self.window.mainloop()
-
-    def draw_settings(self):
-        self.add_header("Settings")
-        buttons = {
-            "TOP LEFT CORNER": (lambda: self.get_new_coords(Coordinate.TOP_LEFT), "Get coordinates"),
-            "BOTTOM RIGHT CORNER": (lambda: self.get_new_coords(Coordinate.BOTTOM_RIGHT), "Get coordinates"),
-            "DISPLAY SIZE": None,
-            "CENTER": None,
-            "CROSS": (lambda: self.get_new_coords(Coordinate.CROSS), "Get coordinates"),
-            "TEXTBOX 1": (lambda: self.get_new_coords(Coordinate.TB_1), "Get coordinates"),
-            "TEXTBOX 2": (lambda: self.get_new_coords(Coordinate.TB_2), "Get coordinates"),
-            "ARROW": (lambda: self.get_new_coords(Coordinate.ARROW), "Get coordinates"),
-            "CHAT COOLDOWN": None,
-            "ENTER COOLDOWN": None
-        }
-        origin_x, origin_y = 2, 0
-        origin = self.data.get_top_left()
-        display_size = self.data.get_bottom_right_corner()
-        cross = self.data.get_cross_coords()
-        textbox_1 = self.data.get_textbox_1_coords()
-        textbox_2 = self.data.get_textbox_2_coords()
-        arrow = self.data.get_arrow_coords()
-
-        coords = []
-        cooldowns = []
-
-        ttk.Button(self.window, text="Save", style="Normal.TButton", command=lambda c=coords,
-                   cd=cooldowns: [self.save_settings(c, cd), self.draw()]).grid(row=0, column=3, sticky="NEWS")
-        for j, data_element in enumerate(buttons):
-            ttk.Label(
-                self.window, style="Normal.TLabel", text=data_element.capitalize()).grid(row=origin_x + j + 1, column=origin_y, sticky="NESW")
-            ttk.Label(
-                self.window, style="Normal.TLabel", text=data_element.capitalize()).grid(row=origin_x + j + 1, column=origin_y, sticky="NESW")
-            if j in range(0, 2) or j in range(4, 8):
-                for i in range(2):
-
-                    tb = ttk.Entry(
-                        self.window, style="Normal.TEntry", font=self.font)
-                    coords.append(tb)
-                    if data_element == "CROSS":
-                        tb.insert(10, string=cross[i % 2])
-                    elif data_element == "TEXTBOX 1":
-                        tb.insert(10, string=textbox_1[i % 2])
-                    elif data_element == "TEXTBOX 2":
-                        tb.insert(10, string=textbox_2[i % 2])
-                    elif data_element == "ARROW":
-                        tb.insert(10, string=arrow[i % 2])
-                    elif data_element == "BOTTOM RIGHT CORNER":
-                        tb.insert(10, string=display_size[i % 2])
-                    elif data_element == "TOP LEFT CORNER":
-                        tb.insert(10, string=origin[i % 2])
-                    tb.grid(row=origin_x + j+1, column=origin_y + i + 1,
-                            sticky="NESW", padx=1, pady=1)
-                ttk.Button(self.window, text=buttons[data_element][1],
-                           style="Normal.TButton",
-                           # state="disabled",
-                           command=buttons[data_element][0]).grid(
-                    row=origin_x + j + 1, column=origin_y + 3, sticky="NESW")
-            elif j in range(2, 4):
-                if j == 2:
-                    text = self.data.get_display_size()
-                else:
-                    text = self.data.get_center()
-                label_x = ttk.Label(
-                    self.window, style="Normal.TLabel", text=text[0]
-                    ).grid(row=origin_x + j + 1, column=origin_y + 1, sticky="NESW")
-                label_y = ttk.Label(
-                    self.window, style="Normal.TLabel", text=text[1]
-                    ).grid(row=origin_x + j + 1, column=origin_y + 2, sticky="NESW")
-            elif j in range(8, 10):
-                spinbox = ttk.Spinbox(self.window,
-                                      values=[l / 10 for l in range(1, 100)],
-                                      style="Normal.TSpinbox",
-                                      font=self.font
-                                      )
-                cooldowns.append(spinbox)
-                if data_element == "CHAT COOLDOWN":
-                    spinbox.insert(0, self.data.get_cooldown())
-
-                if data_element == "ENTER COOLDOWN":
-                    spinbox.insert(0, self.data.get_enter_cooldown())
-
-                spinbox.grid(row=origin_x + j+1, column=origin_y + 1,
-                             padx=1, pady=1, columnspan=3, sticky="NEWS")
-
-    def draw_tasks(self):
-        self.add_header("Tasks")
-        tasks_with_start = {}
-        for task in self.tasks.tasks:
-            def com(t=task): return self.tasks.do_task(t)
-            en = self.tasks.tasks[task][1]
-            tasks_with_start[task] = (com, en)
-        self.add_buttons(tasks_with_start, 2, 1, 4)
-        self.window.mainloop()
-
-    def draw_NA(self):
-        self.add_header("UHHH")
-        ttk.Label(self.window, text="It looks like this state doesn't have a visual",
-                  style="Normal.TLabel", anchor="center") \
-            .grid(row=1, column=0, columnspan=4, sticky="NEWS")
-
     def draw(self):
         current = self.get_current_state()
-        for j in range(4):
-            self.window.columnconfigure(j, weight=1, uniform='fourth')
         # print("Current state is", current)
-        self.clear_window()
-        drawable_states = {
-            State.MENU: lambda: self.draw_menu(),
-            State.JOIN: lambda: self.draw_rejoin(),
-            State.SENTENCES: lambda: self.draw_sentences(),
-            State.SETTINGS: lambda: self.draw_settings(),
-            State.TASKS: lambda: self.draw_tasks(),
-            State.ABOUT: lambda: self.draw_about()
-        }
-        if current in drawable_states:
-            drawable_states[current]()
+        # if current in drawable_states:
+        #     drawable_states[current]()
+        # else:
+        if current != self.drawn_state:
+            self.views[self.drawn_state.name].on_exit()
+            self.views[current.name].on_entry()
+            self.drawn_state = current
         else:
-            self.draw_NA()
-        self.window.mainloop()
+            self.views[current.name].update()
+
+    def mainloop(self):
+        while True:
+            try:
+                if self.states[-1] == State.TASKS:
+                    self.controller.check_combos()
+                self.window.update()
+                if not self.window.winfo_exists():
+                    break
+                self.draw()
+            except Exception as e:
+                print(e)
+                break

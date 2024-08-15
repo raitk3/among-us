@@ -2,3 +2,7 @@ subparts/__pycache__
 *.txt
 *.bak
 *.json
+build
+dist
+*.spec
+screenshots
