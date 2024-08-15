@@ -5,11 +5,10 @@ So this is a tiny repo where I keep all my Among Us Coding related stuff.
 
 ## Required resources
 
-- Python 3.7 or newer
-- pyautogui (https://pypi.org/project/PyAutoGUI/)
+- Python 3.12 or newer
+- pynput (https://pypi.org/project/pynput/)
 - keyboard (https://pypi.org/project/keyboard/)
-
-For bot I have used ctypes from windll, so read pixels from display, probably won't work on anything other than Windows.
+- pygame (https://www.pygame.org)
 
 ## Encountered a bug?
 
