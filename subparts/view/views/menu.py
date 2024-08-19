@@ -1,6 +1,5 @@
 from subparts.view.view import View
 from subparts.common import State
-from tkinter import ttk
 
 class Menu(View):
     def __init__(self, ux) -> None:

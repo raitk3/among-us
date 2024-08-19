@@ -15,7 +15,7 @@ class Data:
 
     def init_missing_data(self):
         self.data["coords"] = self.data.get("coords", [[510, 365], [965, 895], [910, 335], [1210, 340]])
-        self.data["rejoin_cooldown"] = self.data.get("rejoin_cooldown", 2.0)
+        self.data["rejoin_cooldown"] = self.data.get("rejoin_cooldown", 3.0)
         self.data["display"] = self.data.get("display", [[0, 0], [1920, 1080]])
         self.data["rejoin_code"] = self.data.get("rejoin_code", "")
 
@@ -123,6 +123,7 @@ class Data:
     
     def set_rejoin_code(self, code):
         self.data["rejoin_code"] = code
+        self.write_data_to_file()
 
     def set_rejoin_cooldown(self, cooldown):
         self.data["rejoin_cooldown"] = float(cooldown)

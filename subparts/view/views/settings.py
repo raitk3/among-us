@@ -1,7 +1,6 @@
 from subparts.view.view import View
-import tkinter as tk
 from tkinter import ttk
-from subparts.common import State, Coordinate
+from subparts.common import Coordinate
 
 
 class Settings(View):

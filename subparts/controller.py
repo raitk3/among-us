@@ -17,16 +17,23 @@ class Button(Enum):
 class Controller():
     def __init__(self, program) -> None:
         self.program = program
-        self.enabled = True
+        self.enabled = False
+        self.connect_device()
+
+    def connect_device(self):
         try:
             pygame.joystick.init()
             self.controller = pygame.joystick.Joystick(0)
             self.combos = {}
+            self.enabled = True
         except pygame.error:
             self.enabled = False
 
 
     def check_combos(self):
+        if not self.enabled:
+            self.connect_device()
+
         if self.enabled:
             try:
                 if self.controller.get_button(Button.L_JOY.value) and self.controller.get_button(Button.R_JOY.value):

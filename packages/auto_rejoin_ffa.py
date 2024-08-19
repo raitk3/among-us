@@ -44,15 +44,14 @@ def main():
         black = (0, 0, 0)
         green = (0, 255, 0)
         white = (255, 255, 255)
-        if screenshot[1231, 971] == green:
-            wait_seconds(2)
-            start_game(m)
-            wait_seconds(10)
+        # if screenshot[1231, 971] == green:
+        #     wait_seconds(2)
+        #     start_game(m)
+        #     wait_seconds(10)
         if screenshot[1385, 900] == black and \
            screenshot[1392, 900] == white:
             end1(m)
-        if screenshot[768, 526] == lime and \
-           screenshot[1850, 880] == grey:
+            wait_seconds(2)
             end2(m)
         wait_seconds(1)
     

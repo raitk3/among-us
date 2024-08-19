@@ -1,7 +1,3 @@
-import tkinter as tk
-from tkinter import ttk
-from subparts.common import State
-
 from subparts.view.view import View
 
 class NA(View):

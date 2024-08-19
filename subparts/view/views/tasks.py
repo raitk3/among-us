@@ -35,15 +35,14 @@ class Tasks(View):
         current_choice = Map.from_string(self.current_map.get())
         if self.update_needed:
             self.drawn_map = current_choice
-            self.on_exit()
-            self.on_entry()
+            self.redraw()
             self.update_needed = False
         if self.kill_active:
             if self.common.check_break():
                 self.toggle_kill(False)
             else:
                 self.tasks.kill()
-                self.common.wait_seconds(0.02)
+                self.common.wait_seconds(0.01)
 
     def check_update_needed(self):
         current_choice = Map.from_string(self.current_map.get())

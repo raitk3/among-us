@@ -1,4 +1,3 @@
-import tkinter as tk
 from tkinter import ttk
 from subparts.common import State
 
@@ -110,6 +109,9 @@ class View():
         for child in self.window.winfo_children():
             child.destroy()
 
+    def redraw(self):
+        self.on_exit()
+        self.on_entry()
 
     # Other functions
     def add_header(self, title):
