@@ -42,7 +42,7 @@ class Tasks(View):
                 self.toggle_kill(False)
             else:
                 self.tasks.kill()
-                self.common.wait_seconds(0.01)
+                self.common.wait_seconds(0.12)
 
     def check_update_needed(self):
         current_choice = Map.from_string(self.current_map.get())

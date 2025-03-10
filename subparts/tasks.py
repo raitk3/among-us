@@ -18,13 +18,13 @@ class Tasks:
         self.current_map = Map.SKELD
         self.tasks = [
             # command, maps, enabled, usebutton
-            Task("Align", lambda: self.align(), [Map.SKELD], False, True),
+            Task("Align", lambda: self.align(), [Map.SKELD], True, True),
             Task("Align telescope", lambda: self.align_telescope(), [Map.POLUS], False, True),
             Task("Assemble artifact", lambda: self.assemble_artifact(), [Map.MIRA, Map.FUNGLE], False, True),
             Task("Asteroids", lambda: self.asteroids(), [Map.SKELD, Map.MIRA, Map.POLUS], False, True),
             Task("Build sandcastle", lambda: self.sandcastle(), [Map.FUNGLE], False, True),
             Task("Buy beverage", lambda: self.beverage(), [Map.MIRA], False, True),
-            Task("Calibrate distributor", lambda: self.calibrate_distributor(), [Map.SKELD, Map.AIRSHIP], False, True),
+            Task("Calibrate distributor", lambda: self.calibrate_distributor(), [Map.SKELD, Map.AIRSHIP], True, True),
             Task("Catch fish", lambda: self.fish(), [Map.FUNGLE], False, True),
             Task("Chart course",lambda: self.course(), [Map.SKELD, Map.MIRA, Map.POLUS], False, True),
             Task("Clean toilet",lambda: self.toilet(), [Map.AIRSHIP], False, True),
@@ -35,9 +35,9 @@ class Tasks:
             Task("Crank generator",lambda: self.generator(), [Map.FUNGLE], False, True),
             Task("Decontaminate",lambda: self.scan(), [Map.AIRSHIP], True, True),
             Task("Develop photos",lambda: self.photos(), [Map.AIRSHIP], False, True),
-            Task("Divert 1", lambda: self.divert_1(), [Map.SKELD, Map.MIRA, Map.AIRSHIP], False, True),
+            Task("Divert 1", lambda: self.divert_1(), [Map.SKELD, Map.MIRA, Map.AIRSHIP], True, True),
             Task("Divert 2", lambda: self.center_click(), [Map.SKELD, Map.MIRA, Map.AIRSHIP], True, True),
-            Task("Download/Upload", lambda: self.download_upload(), [Map.SKELD], True, True),
+            Task("Download/Upload", lambda: self.download_upload(), [Map.SKELD, Map.POLUS], True, True),
             Task("Download", lambda: self.download_mira(), [Map.MIRA], False, True),
             Task("Enter ID-code", lambda: self.id_code(), [Map.MIRA, Map.AIRSHIP, Map.FUNGLE], False, True),
             Task("Extract fuel", lambda: self.extract(), [Map.MIRA, Map.AIRSHIP, Map.FUNGLE], False, True),
@@ -70,7 +70,7 @@ class Tasks:
             Task("Reboot WiFi 1", lambda: self.wifi_1(), [Map.POLUS], False, True),
             Task("Reboot WiFi 2", lambda: self.wifi_2(), [Map.POLUS], False, True),
             Task("Record temperature", lambda: self.temps(), [Map.POLUS], False, True),
-            Task("Repair drill", lambda: self.drill(), [Map.POLUS], False, True),
+            Task("Repair drill", lambda: self.drill(), [Map.POLUS], True, True),
             Task("Replace parts", lambda: self.parts(), [Map.POLUS], False, True),
             Task("Replace water jug", lambda: self.water(), [Map.POLUS, Map.FUNGLE], False, True),
             Task("Reset breakers", lambda: self.start_task(), [Map.AIRSHIP], False, True),
@@ -116,30 +116,8 @@ class Tasks:
 
     def wait_for_cross(self, cross):
         while self.check_cross(cross):
-            if check_break():
+            if self.commom.check_break():
                 break
-
-    def drag_from(self, coords_1, coords_2, waiting_time=0):
-        """
-        ToDo:
-        Make use of pyautogui.drag()
-        - Not useful
-        """
-        time_to_wait_between_actions = 0.1
-        self.mouse.position = self.program.data.correct_coords(coords_1)
-        if check_break(self.keyboard):
-            return
-        self.mouse.press(mouse.Button.left)
-        wait_seconds(time_to_wait_between_actions)
-        if check_break(self.keyboard):
-            return
-        self.mouse.position = self.program.data.correct_coords(coords_2)
-        if check_break(self.keyboard):
-            self.mouse.release(mouse.Button.left)
-            return
-        wait_seconds(waiting_time + time_to_wait_between_actions)
-        self.mouse.release(mouse.Button.left)
-        wait_seconds(time_to_wait_between_actions)
 
     def drag_slowly(self, scales_1, scales_2, steps):
         coords_1 = self.common.scale_to_coords(scales_1)
@@ -208,7 +186,6 @@ class Tasks:
         return 3
 
     #####CYCLE#####
-
     def get_use_button(self):
         brc = self.data.get_bottom_right()
         s = self.data.get_scale()
@@ -229,19 +206,35 @@ class Tasks:
             self.common.wait_seconds(2)
 
     #####TASKS#####
-    # ToDo
     def align(self):
-        pass
+        center = (0, 0)
+        align_parabola_constant = 0.30887
+        range_of_align_up_and_down_values = range(-7222, 7222, 100)
+        # Tip of parabola (1330, 150)    => (0.6852, -0.7222)
+        # Center of parabola (1243, 540) => (0.5241, 0)
+        # Bottom of parabola (1330, 930) => (0.6852, 0.7222)
+        image = self.get_screenshot()
+        for y in range_of_align_up_and_down_values:
+            y_scale = y / 10000
+            x_scale = align_parabola_constant * y_scale ** 2 + 0.5241
+            actual_scales = (center[0] + x_scale, center[1] + y_scale)
+            coordinates = self.common.scale_to_coords(actual_scales)
+            r, g, b = image[coordinates]
+            if max(r, g, b) > 70:
+                self.common.drag_from_center(actual_scales, center)
+                break
+            if self.common.check_break():
+                break
     
     # ToDo
     def align_telescope(self):
         pass
 
     # ToDo
-    # ToDo
     def antenna(self):
         pass
 
+    # ToDo
     def assemble_artifact(self):
         pass
 
@@ -257,9 +250,31 @@ class Tasks:
     def burger(self):
         pass
 
-    # ToDo
     def calibrate_distributor(self):
-        pass
+        box1 = (0.5, -0.574)
+        button1 = (0.5, -0.426)
+        box2 = (0.5, -0.074)
+        button2 = (0.5, 0.074)
+        box3 = (0.5, 0.4222)
+        button3 = (0.5, 0.552)
+
+        done = 0
+        while done != 3:
+            if self.common.check_break():
+                break
+            screenshot = self.get_screenshot()
+            if done == 0 and screenshot[self.common.scale_to_coords(box1)][0] > 0:
+                self.common.click_from_center(button1)
+                done = 1
+            elif done == 1 and screenshot[self.common.scale_to_coords(box2)][2] > 0:
+                self.common.click_from_center(button2)
+                done = 2
+            elif done == 2 and screenshot[self.common.scale_to_coords(box3)][2] > 0:
+                self.common.click_from_center(button3)
+                done = 3
+            if screenshot[self.common.scale_to_coords(box1)][0] == 0:
+                done = 0
+            print(done)
 
     # ToDo
     def canisters(self):
@@ -286,9 +301,22 @@ class Tasks:
     def course(self):
         pass
 
-    # ToDo
     def divert_1(self):
-        pass
+        buttons = [
+           (-0.627, 0.4555),
+           (-0.4537, 0.4555),
+           (-0.2759, 0.4555),
+           (-0.0907, 0.4555),
+           (0.0888, 0.4555),
+           (0.2648, 0.4555),
+           (0.4426, 0.4555),
+           (0.6222, 0.4555)
+        ]
+        self.common.wait_seconds(0.2)
+        image = self.get_screenshot()
+        for button in buttons:
+            if image[self.common.scale_to_coords(button)][0] > 120:
+                self.common.drag_from_center(button, (button[0], 0))
 
     def download_upload(self):
         self.click_from_center((0, 0.224))
@@ -297,10 +325,20 @@ class Tasks:
     def download_mira(self):
         pass
 
-    # ToDo
     def drill(self):
-        pass
-
+        corners = [
+            (-0.3296, -0.60185),
+            (-0.3296, 0.47777),
+            (0.31666, -0.60185),
+            (0.31666, 0.47777)
+        ]
+        for corner in corners:
+            for _ in range(4):
+                if self.common.check_break():
+                    break
+                self.click_from_center(corner)
+                self.common.wait_seconds(0.1)
+                
     # ToDo
     def extract(self):
         pass
@@ -409,7 +447,6 @@ class Tasks:
     def signal(self):
         pass
 
-    # ToDo: Sab
     def simon_says(self):
         lights = []
         buttons = []
@@ -425,14 +462,13 @@ class Tasks:
         i = self.check_simon_lights()
         print(i)
         while i < 6:
-            # print(i)
             order_to_press = []
             while len(order_to_press) < i:
                 image = self.get_screenshot()
                 for j, light in enumerate(lights):
                     if self.common.check_break():
                         return
-                    if image[self.common.scale_to_coords((light[0], light[1]))] != (0, 0, 0):
+                    if image[self.common.scale_to_coords((light[0], light[1]))][2] != 0:
                         order_to_press.append(buttons[j])
                         self.common.wait_seconds(0.25)
                 print(order_to_press)
